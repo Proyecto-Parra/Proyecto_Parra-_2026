@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naturgy - Gestión de Reportes y Equipos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Cabecera Principal -->
+<header class="main-header">
+    <div class="logo-left-container">
+        <img src="{{ url_for('static', filename='CAT.png') }}" alt="Logo CAT" class="logo-cat-large">
+    </div>
+    <h1 class="header-title">Naturgy - Gestión de Reportes</h1>
+    <p class="header-subtitle">Automatización, Control Operativo y Centro de Información</p>
+    
+    <!-- Botón de Alternancia Modo Oscuro / Claro -->
+    <button id="theme-toggle-btn" class="btn-theme-toggle" onclick="toggleDarkMode()" title="Cambiar tema">
+        <svg id="theme-icon-sun" class="theme-icon" viewBox="0 0 24 24" style="display:none;">
+            <path fill="currentColor" d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41s-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>
+        </svg>
+        <svg id="theme-icon-moon" class="theme-icon" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M12.3 2a10 10 0 0 0 9.7 11.6 1 1 0 0 1 1.1 1.4 10 10 0 1 1-11.8-12.8 1 1 0 0 1 1- hitz"/>
+            <path fill="currentColor" d="M12.3 2a10 10 0 0 0 9.7 11.6 1 1 0 0 1 1.2 1.2A10 10 0 1 1 11.4 2a1 1 0 0 1 .9 0z"/>
+        </svg>
+        <span id="theme-toggle-text">Modo Oscuro</span>
+    </button>
+</header>
+
+    <main class="container">
+
+<!-- 1. SECCIÓN DE TARJETAS DE EQUIPOS -->
+<section id="equipo-section">
+    <div class="equipos-grid">
+
+        <div class="card-equipo">
+            <h2>Naturgy BAN CAU</h2>
+            <p>Acceso a reportes, información operativa y logueos de BAN CAU.</p>
+            <button class="btn-card" onclick="abrirLogin('NATURGY BAN CAU')">Ingresar</button>
+        </div>
+
+        <div class="card-equipo">
+            <h2>Naturgy San Juan</h2>
+            <p>Acceso a reportes, información operativa y logueos de Energía San Juan.</p>
+            <button class="btn-card" onclick="abrirLogin('NATURGY SAN JUAN')">Ingresar</button>
+        </div>
+
+        <div class="card-equipo">
+            <h2>Naturgy NOA CAU</h2>
+            <p>Acceso a reportes, información operativa y logueos de NOA CAU.</p>
+            <button class="btn-card" onclick="abrirLogin('NATURGY NOA CAU')">Ingresar</button>
+        </div>
+
+        <div class="card-equipo card-lider">
+            <h2>Panel de Líderes</h2>
+            <p>Gestión global, actualización y administración general.</p>
+            <button class="btn-card btn-lider" onclick="abrirLogin('LIDER')">Acceso Líder</button>
+        </div>
+
+    </div>
+</section>
+
+        <!-- 2. DASHBOARD PRINCIPAL DE EQUIPO -->
+        <section id="dashboard-section" style="display: none;">
+            
+            <!-- Barra superior del usuario autenticado -->
+            <div class="user-bar">
+                <div>
+                    <strong>Usuario:</strong> <span id="user-display">---</span> 
+                    | <strong>Equipo:</strong> <span id="team-display">---</span>
+                    | <strong>Rol:</strong> <span id="role-display" class="badge">---</span>
+                </div>
+                <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+            </div>
+
+            <!-- Navegación por Pestañas -->
+            <div class="tabs-nav">
+                <button class="tab-btn active" onclick="cambiarPestana('nomina', event)">
+                    <svg class="tab-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                    Nómina
+                </button>
+                <button class="tab-btn" onclick="cambiarPestana('campana', event)">
+                    <svg class="tab-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    Info Campaña
+                </button>
+                <button class="tab-btn" onclick="cambiarPestana('logueos', event)">
+                    <svg class="tab-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                    Logueos
+                </button>
+                <button class="tab-btn" onclick="cambiarPestana('novedades', event)">
+                    <svg class="tab-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                    Novedades
+                </button>
+                <button class="tab-btn" onclick="cambiarPestana('calidad', event)">
+                    <svg class="tab-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                    Calidad
+                </button>
+                <button class="tab-btn" onclick="cambiarPestana('metricas', event)">
+                    <svg class="tab-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v7zm4 0h-2v-4h2v4z"/></svg>
+                    Métricas
+                </button>
+            </div>
+
+            <!-- CONTENIDO DE PESTAÑAS -->
+
+            <!-- PESTAÑA 1: NÓMINA -->
+            <div id="tab-nomina" class="tab-content active">
+                <div class="panel-box">
+                    <div id="nomina-container">
+                        <p>Selecciona un equipo para consultar su nómina.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 2: INFO CAMPAÑA (CANVA EMBED) -->
+            <div id="tab-campana" class="tab-content">
+                <div class="panel-box">
+                    <h3 id="campana-title">📢 Información de Campaña</h3>
+                    <div id="canva-container"></div>
+                </div>
+            </div>
+
+<!-- PESTAÑA 3: LOGUEOS -->
+            <div id="tab-logueos" class="tab-content">
+                <div id="leader-panel" class="panel-box" style="display: none;">
+                    <h3>📤 Cargar Reporte de Asesor (Excel / CSV)</h3>
+                    <p>Sube las planillas para actualizar el consolidado de logueos:</p>
+                    <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px;">
+                        <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
+                        <button class="btn-card btn-lider" onclick="subirArchivo()">Subir Reporte</button>
+                    </div>
+                </div>
+
+                <div class="panel-box">
+                    <div class="panel-header-filter" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h3>⏱️ Horarios de Logueo y Asistencia Consolidada</h3>
+                        
+                        <div class="filter-group" style="display: flex; gap: 15px; align-items: center;">
+                            <div>
+                                <label for="select-mes-logueos"><strong>Mes:</strong></label>
+                                <select id="select-mes-logueos" class="select-mes" onchange="cambiarMes('logueos', this.value)">
+                                    <option value="2026-10" selected>Octubre 2026</option>
+                                    <option value="2026-11">Noviembre 2026</option>
+                                    <option value="2026-12">Diciembre 2026</option>
+                                    <option value="2027-01">Enero 2027</option>
+                                    <option value="2027-02">Febrero 2027</option>
+                                </select>
+                            </div>
+
+                            <!-- BOTÓN PARA LIMPIAR DATOS -->
+                            <button id="btnLimpiar" class="btn-card" style="background-color: #dc3545; color: white;" onclick="limpiarLogueos()">
+                                🗑️ Limpiar datos / Empezar de cero
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="table-container" class="table-responsive" style="margin-top: 15px;">
+                        <p>Cargando información del equipo...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 4: NOVEDADES -->
+            <div id="tab-novedades" class="tab-content">
+                <div class="panel-box">
+                    <h3>📋 Registro de Novedades e Incidencias</h3>
+                    <p>Novedades operativas, licencias, cambios de turno y avisos importantes.</p>
+                    <div class="placeholder-box">
+                        <p>No hay novedades registradas recientemente para este equipo.</p>
+                    </div>
+                </div>
+            </div>
+
+<!-- PESTAÑA 5: CALIDAD -->
+<div id="tab-calidad" class="tab-content">
+    <div class="panel-box">
+        <div class="panel-header-filter">
+            <h3>🎯 Control y Evaluaciones de Calidad</h3>
+            <div class="filter-group">
+                <label for="select-mes-calidad"><strong>Mes:</strong></label>
+                <select id="select-mes-calidad" class="select-mes" onchange="cambiarMes('calidad', this.value)">
+                    <option value="2026-10" selected>Octubre 2026</option>
+                    <option value="2026-11">Noviembre 2026</option>
+                    <option value="2026-12">Diciembre 2026</option>
+                    <option value="2027-01">Enero 2027</option>
+                    <option value="2027-02">Febrero 2027</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Sub-navegación interna de Calidad -->
+        <div class="subtabs-nav">
+            <button class="subtab-btn active" onclick="cambiarSubpestanaCalidad('glosario', event)">📖 Glosario</button>
+            <button class="subtab-btn" onclick="cambiarSubpestanaCalidad('resumen', event)">📊 Planilla Resumen</button>
+            <button class="subtab-btn" onclick="cambiarSubpestanaCalidad('detalle', event)">📋 Planilla Detalle</button>
+        </div>
+
+        <!-- SUB-PESTAÑA 1: GLOSARIO (10 ATRIBUTOS COMPLETOS) -->
+        <div id="subtab-calidad-glosario" class="subtab-content active">
+            <div class="glosario-container">
+                
+                <!-- Atributo 1 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">1</div>
+                    <div class="glosario-info">
+                        <h4>Frases de Cortesía (Saludo Inicial y Despedida) - Derivación Correcta</h4>
+                        <p><strong>Criterio:</strong> Utiliza frases de cortesía al iniciar y terminar el contacto telefónico (Saludo Inicial y Despedida). Detectar el motivo del llamado (si corresponde a CAU o Comercial) y realiza la derivación si corresponde.</p>
+                        <div class="glosario-alerta">
+                            ⚠️ <strong>Penalización / Baja de puntaje:</strong> No cumplir con el saludo y la presentación. Responder al cliente después de los 5 segundos. Cuando la despedida no es cordial.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Atributo 2 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">2</div>
+                    <div class="glosario-info">
+                        <h4>Escucha Activa - Manejo de la Conversación - Rapidez en la Respuesta</h4>
+                        <p><strong>Criterio:</strong> Se evalúa que el asesor responda la consulta al cliente asegurando una respuesta rápida. También se tiene en cuenta que no hable sobre el cliente; debe permitir que se exprese sin perder la conducción del llamado.</p>
+                    </div>
+                </div>
+
+                <!-- Atributo 3 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">3</div>
+                    <div class="glosario-info">
+                        <h4>Detecta claramente la necesidad del cliente (Sondeo)</h4>
+                        <p><strong>Criterio:</strong> Se evalúa que el operador realice las preguntas necesarias para comprender la consulta del cliente. Que repregunte y repita para asegurarse de que comprende la consulta.</p>
+                    </div>
+                </div>
+
+                <!-- Atributo 4 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">4</div>
+                    <div class="glosario-info">
+                        <h4>Lenguaje claro y preciso - Profesionalismo - Tratamiento de la Espera</h4>
+                        <p><strong>Criterio:</strong> Se evalúa la utilización de un lenguaje formal, tono y ritmo adecuado de la conversación. Buena dicción. Sonrisa telefónica. Evitar el uso de muletillas. Emplear palabras correctas manteniendo siempre el respeto hacia el cliente.</p>
+                        <p><strong>Tratamiento de la Espera:</strong> Informar al cliente que se lo va a dejar en espera y agradecer el tiempo de espera al retomar.</p>
+                    </div>
+                </div>
+
+                <!-- Atributo 5 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">5</div>
+                    <div class="glosario-info">
+                        <h4>Demuestra una Actitud Empática - Soporte Emocional</h4>
+                        <p><strong>Criterio:</strong> El operador comprende las emociones del cliente; ante un estado de alteración del mismo, busca la contención generando empatía. Utiliza frases de cortesía (ej.: <em>"lo comprendo"</em>, <em>"comprendo su situación"</em>, <em>"le agradezco"</em>, <em>"muchas gracias"</em>, <em>"por favor"</em>). Personalizar con el cliente (al menos dos veces durante la llamada).</p>
+                    </div>
+                </div>
+
+                <!-- Atributo 6 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">6</div>
+                    <div class="glosario-info">
+                        <h4>Responde al requerimiento del cliente con solvencia y seguridad (Información) - Protocolo de Emergencia</h4>
+                        <p><strong>Criterio:</strong> Evaluamos que se brinde información correcta, completa y veraz: procedimientos, periodos, facturas, valores, gestiones, etc. También, se evalúa la adherencia del operador a los procedimientos y protocolos establecidos para situaciones de emergencia.</p>
+                    </div>
+                </div>
+
+                <!-- Atributo 7 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">7</div>
+                    <div class="glosario-info">
+                        <h4>Tipificación correcta del reclamo - Carga de datos precisos - Observaciones</h4>
+                        <p><strong>Criterio:</strong> Evaluamos que se tipifique la llamada de manera correcta y se registren los comentarios completos: Nombre, Apellido, DNI de la persona que se comunica, Vínculo con el TT, desde cuándo ocupa la vivienda, la consulta realizada y la respuesta brindada. En caso de RECLAMO debe registrarse el N° y los teléfonos del cliente.</p>
+                    </div>
+                </div>
+
+                <!-- Atributo 8 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">8</div>
+                    <div class="glosario-info">
+                        <h4>Intima al cambio de Titularidad / Promocionar OV y Factura por mail</h4>
+                        <p><strong>Criterio:</strong> Evaluamos que se IDENTIFIQUE AL CONTACTO; en caso de no ser el titular, se lo debe intimar a que realice el CAMBIO DE TITULARIDAD. Aplica para TT fallecido, familiares que ocupen vivienda, inquilinos, nuevos propietarios, etc. Se debe promocionar OV y Factura por mail.</p>
+                    </div>
+                </div>
+
+                <!-- Atributo 9 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">9</div>
+                    <div class="glosario-info">
+                        <h4>Validación de Datos (Titular, Dirección completa, teléfono del reclamante)</h4>
+                        <p><strong>Criterio:</strong> Evaluamos que se realice la Validación de datos completa y correcta: Nombre y Apellido, Vínculo con el titular, DNI, Dirección (calle, numeración, casa o depto., piso), Teléfonos (de contacto, particular, celular), Correo electrónico. El operador mantiene la confidencialidad de datos del cliente (bajo ningún concepto se deben brindar datos que figuren en el sistema).</p>
+                    </div>
+                </div>
+
+                <!-- Atributo 10 -->
+                <div class="glosario-card">
+                    <div class="glosario-num">10</div>
+                    <div class="glosario-info">
+                        <h4>Resolución efectiva del caso</h4>
+                        <p><strong>Criterio:</strong> Consideramos la resolución del llamado y el contexto general de la comunicación. Se evalúa la habilidad del operador para detectar rápidamente la gravedad de la situación y tomar decisiones adecuadas sobre la prioridad de la respuesta. Se tiene en cuenta si se resolvió la consulta en tiempo y forma. Asimismo, el asesor debe evitar que el cliente vuelva a comunicarse, para ello debe agotar todos los recursos que sean necesarios. Cuando el asesor entienda que la llamada será extensa (el cliente realiza varias consultas, hay demora para otorgar reclamos, etc.), deberá gestionar un llamado saliente.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SUB-PESTAÑA 2: PLANILLA RESUMEN -->
+<div id="subtab-calidad-resumen" class="subtab-content">
+    
+    <!-- Encabezado con Indicador de Objetivo -->
+    <div class="calidad-header-box">
+        <div class="calidad-brand">
+            <img src="{{ url_for('static', filename='naturgy.png') }}" alt="Logo Naturgy" class="logo-naturgy" onerror="this.style.display='none'">
+            <div>
+                <h4>Resumen Consolidado de Calidad</h4>
+                <p>Promedios por asesor, equipos y cumplimiento general de campaña</p>
+            </div>
+        </div>
+        <div class="objetivo-badge">
+            <span class="objetivo-icon">🎯</span>
+            <div>
+                <span class="objetivo-label">Objetivo de Calidad</span>
+                <strong class="objetivo-val">85%</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Carga exclusivo para Líderes -->
+    <div id="leader-panel-calidad-resumen" class="panel-box leader-panel-box" style="display: none;">
+        <h3>📤 Cargar Planilla Resumen de Calidad (Excel / CSV)</h3>
+        <p>Sube la planilla con las notas finales por monitoreo (1º, 2º, 3º Monitoreo, QM, Nota Final):</p>
+        <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px;">
+            <input type="file" id="excelCalidadResumenFile" accept=".xlsx, .xls, .csv">
+            <button class="btn-card btn-lider" onclick="subirArchivoCalidadResumen()">Subir Resumen Calidad</button>
+        </div>
+    </div>
+
+    <!-- Tabla Resumen -->
+    <div class="panel-box">
+        <h3>📊 Consolidados por Asesor y Team Leaders</h3>
+        <div id="table-calidad-resumen-container" class="table-responsive">
+            <p>Sube una planilla resumen para consultar los indicadores generales.</p>
+        </div>
+    </div>
+</div>
+
+        <!-- SUB-PESTAÑA 3: PLANILLA DETALLE -->
+        <div id="subtab-calidad-detalle" class="subtab-content">
+            <div class="calidad-header-box">
+                <div class="calidad-brand">
+                    <img src="{{ url_for('static', filename='naturgy.png') }}" alt="Logo Naturgy" class="logo-naturgy" onerror="this.style.display='none'">
+                    <div>
+                        <h4>Monitoreo y Auditoría de Calidad</h4>
+                        <p>Detalle individual de evaluaciones por llamada y pautas de atención</p>
+                    </div>
+                </div>
+                <div class="objetivo-badge">
+                    <span class="objetivo-icon">🎯</span>
+                    <div>
+                        <span class="objetivo-label">Objetivo de Calidad</span>
+                        <strong class="objetivo-val">85%</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div id="leader-panel-calidad-detalle" class="panel-box leader-panel-box" style="display: none;">
+                <h3>📤 Cargar Planilla Detalle de Calidad (Excel / CSV)</h3>
+                <p>Sube la planilla con las evaluaciones llamada por llamada y pautas ponderadas:</p>
+                <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px;">
+                    <input type="file" id="excelCalidadDetalleFile" accept=".xlsx, .xls, .csv">
+                    <button class="btn-card btn-lider" onclick="subirArchivoCalidadDetalle()">Subir Detalle Calidad</button>
+                </div>
+            </div>
+
+            <div class="panel-box">
+                <h3>📋 Registro Detallado de Auditorías</h3>
+                <div id="table-calidad-detalle-container" class="table-responsive">
+                    <p>Sube una planilla de detalle para consultar los monitoreos individuales.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+            <!-- PESTAÑA 6: MÉTRICAS -->
+            <div id="tab-metricas" class="tab-content">
+                <div class="panel-box">
+                    <div class="panel-header-filter">
+                        <h3>📈 Indicadores y Métricas Operativas (KPIs)</h3>
+                        <div class="filter-group">
+                            <label for="select-mes-metricas"><strong>Mes:</strong></label>
+                            <select id="select-mes-metricas" class="select-mes" onchange="cambiarMes('metricas', this.value)">
+                                <option value="2026-10" selected>Octubre 2026</option>
+                                <option value="2026-11">Noviembre 2026</option>
+                                <option value="2026-12">Diciembre 2026</option>
+                                <option value="2027-01">Enero 2027</option>
+                                <option value="2027-02">Febrero 2027</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="placeholder-box">
+                        <p>Estadísticas e indicadores KPIs disponibles para el periodo seleccionado.</p>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- 3. MODAL DE LOGIN -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarLogin()">&times;</span>
+            <h2 id="modalTitle">Acceso a Equipo</h2>
+            
+            <form onsubmit="validarAcceso(event)">
+                <div style="margin-bottom: 12px;">
+                    <label for="usuario">Usuario:</label>
+                    <input type="text" id="usuario" placeholder="Ingresa tu usuario" required autocomplete="username">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label for="password">Contraseña:</label>
+                    <input type="password" id="password" placeholder="Ingresa tu contraseña" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn-ingresar">Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>

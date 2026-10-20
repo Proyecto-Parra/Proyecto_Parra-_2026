@@ -1,0 +1,144 @@
+let equipoSeleccionado = "";
+
+// Abrir el modal de Login configurando el equipo seleccionado
+function abrirLogin(nombreEquipo) {
+    equipoSeleccionado = nombreEquipo;
+    document.getElementById("modalTitle").innerText = "Acceso a " + nombreEquipo;
+    document.getElementById("loginModal").style.display = "block";
+    document.getElementById("usuario").focus();
+}
+
+// Cerrar el modal de Login
+function cerrarLogin() {
+    document.getElementById("loginModal").style.display = "none";
+    document.getElementById("usuario").value = "";
+    document.getElementById("password").value = "";
+}
+
+// Validar credenciales enviando la petición a Flask (/login)
+function validarAcceso(event) {
+    event.preventDefault();
+
+    const usuarioInput = document.getElementById("usuario").value.trim();
+    const passwordInput = document.getElementById("password").value.trim();
+
+    if (!usuarioInput || !passwordInput) {
+        alert("Por favor completa el usuario y la contraseña.");
+        return;
+    }
+
+    fetch("/login", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            usuario: usuarioInput,
+            password: passwordInput,
+            equipo: equipoSeleccionado
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            cerrarLogin();
+
+            // Ocultar tarjetas de equipos y mostrar el Dashboard principal
+            document.getElementById("equipo-section").style.display = "none";
+            document.getElementById("dashboard-section").style.display = "block";
+
+            // Actualizar datos del usuario autenticado en pantalla
+            document.getElementById("user-display").innerText = data.usuario;
+            document.getElementById("role-display").innerText = data.rol.toUpperCase();
+
+            // Si el usuario es LÍDER, activar el panel exclusivo para subir archivos
+            const leaderPanel = document.getElementById("leader-panel");
+            if (data.rol === "lider") {
+                leaderPanel.style.display = "block";
+            } else {
+                leaderPanel.style.display = "none";
+            }
+
+            // Cargar automáticamente la tabla o resumen
+            cargarReporte();
+
+        } else {
+            alert("❌ Error: " + data.message);
+        }
+    })
+    .catch(error => {
+        console.error("Error en la autenticación:", error);
+        alert("❌ Ocurrió un error de red al intentar iniciar sesión.");
+    });
+}
+
+// Cargar y mostrar la tabla o estado del reporte activo
+function cargarReporte() {
+    const tableContainer = document.getElementById("table-container");
+    if (!tableContainer) return;
+
+    tableContainer.innerHTML = "<p>Cargando información del equipo...</p>";
+
+    fetch("/obtener_reporte")
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.html_tabla) {
+            tableContainer.innerHTML = data.html_tabla;
+        } else {
+            tableContainer.innerHTML = "<p>No hay reportes cargados para este equipo aún.</p>";
+        }
+    })
+    .catch(() => {
+        tableContainer.innerHTML = "<p>Panel de reporte listo. Esperando la carga de archivo Excel/CSV por el Líder.</p>";
+    });
+}
+// Subir archivo Excel o CSV (exclusivo para Líderes)
+function subirArchivo() {
+    const fileInput = document.getElementById("excelFile");
+
+    if (!fileInput || fileInput.files.length === 0) {
+        alert("⚠️ Por favor selecciona un archivo (.xlsx, .xls o .csv) antes de presionar subir.");
+        return;
+    }
+
+    const formData = new FormData();
+    // Extracción correcta del primer archivo
+    formData.append("file", fileInput.files[0]);
+
+    // Enviar el archivo a Flask mediante POST
+    fetch("/upload", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert("✅ " + data.message);
+            fileInput.value = ""; // Limpia el selector
+            if (typeof cargarReporte === "function") {
+                cargarReporte();
+            }
+        } else {
+            alert("❌ Error: " + data.message);
+        }
+    })
+    .catch(error => {
+        console.error("Error al subir archivo:", error);
+        alert("❌ Error de comunicación al intentar subir el archivo.");
+    });
+}
+
+// Cerrar sesión y volver a la selección de equipos
+function cerrarSesion() {
+    fetch("/logout", { method: "POST" })
+    .then(() => {
+        document.getElementById("dashboard-section").style.display = "none";
+        document.getElementById("equipo-section").style.display = "flex";
+        alert("Sesión cerrada correctamente.");
+    })
+    .catch(error => {
+        console.error("Error al cerrar sesión:", error);
+        document.getElementById("dashboard-section").style.display = "none";
+        document.getElementById("equipo-section").style.display = "flex";
+    });
+}

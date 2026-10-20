@@ -1,0 +1,22 @@
+FLASK_SECRET_KEY=clave_desarrollo_local_2026
+
+# Contraseñas Líderes
+PASS_KPARRA=Adminkary2026*
+PASS_LHERRERA=Adminlei2026*
+
+# Contraseñas Asesores
+PASS_MQUINTANA=OperMeli2026*
+PASS_AESCOBAR=OperAri2026*
+PASS_LGANINO=OperLucho2026*
+PASS_AHERBAS=OperAle2026*
+PASS_FRIOS=OperFran2026*
+PASS_CARCE=OperCande2026*
+PASS_ARIOS=OperAxel2026*
+PASS_FRUIZ=OperFlor2026*
+PASS_VGARCIA=OperVicky2026*
+PASS_NBOGADO=OperNadu026*
+PASS_VGONZALEZ=OperVane2026*
+PASS_SGONZALEZ=OperSan2026*
+
+# Nómina Oficial BAN (Legajo : Apellido Nombres)
+NOMINA_BAN='{"21740": {"nombre": "Quintana Melisa", "lider": "Parra Karina", "turno": "TM"}, "22432": {"nombre": "Escobar Ariana Lucia", "lider": "Parra Karina", "turno": "TT"}, "22436": {"nombre": "Herbas Alejandra", "lider": "Parra Karina", "turno": "TT"}, "22438": {"nombre": "Rios Gian Franco Gabriel", "lider": "Parra Karina", "turno": "TM"}, "22434": {"nombre": "Ganino Luciano Ian", "lider": "Herrera Leila", "turno": "TM"}, "22439": {"nombre": "Arce Candela", "lider": "Herrera Leila", "turno": "TM"}, "22440": {"nombre": "Rios Axel Rodrigo", "lider": "Herrera Leila", "turno": "TM"}, "22441": {"nombre": "Ruiz Dominguez Florencia Azul", "lider": "Herrera Leila", "turno": "TT"}, "22442": {"nombre": "Garcia Victoria Maria", "lider": "Herrera Leila", "turno": "TT"}, "23827": {"nombre": "Gonzalez Vanesa", "lider": "Herrera Leila", "turno": "TM"}, "23759": {"nombre": "Bogado Barreto Nadia Noemi", "lider": "Herrera Leila", "turno": "TM"}, "311198": {"nombre": "Gonzalez Sandra", "lider": "Herrera Leila", "turno": "TM"}}'

@@ -1,0 +1,935 @@
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600;700&display=swap');
+
+body {
+    font-family: 'Josefin Sans', sans-serif;
+    background-color: #f0f3f6;
+    margin: 0;
+    padding: 0;
+    color: #1a252f;
+}
+
+/* Cabecera Principal */
+.main-header {
+    background-color: #000000;
+    color: #ffffff;
+    padding: 25px 40px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+}
+
+.logo-left-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto 10px auto;
+}
+
+.logo-cat-large {
+    height: 110px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0px 4px 8px rgba(255, 255, 255, 0.2));
+}
+
+.header-title {
+    margin: 10px 0 6px 0;
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.header-subtitle {
+    color: #cccccc;
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Grilla de Selección de Equipos */
+.equipos-grid {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    padding: 40px 10px;
+    flex-wrap: wrap;
+}
+
+.card-equipo {
+    background: #ffffff;
+    padding: 35px 22px;
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    width: 250px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-top: 6px solid #002147;
+}
+
+.card-equipo:hover {
+    transform: translateY(-7px);
+    box-shadow: 0 12px 24px rgba(0, 33, 71, 0.2);
+}
+
+.card-lider {
+    border-top-color: #d84315;
+}
+
+.card-equipo h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #002147;
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+.card-equipo p {
+    color: #64748b;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    margin-bottom: 20px;
+}
+
+.btn-card {
+    background-color: #002147;
+    color: #ffffff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background-color 0.2s;
+}
+
+.btn-card:hover {
+    background-color: #001530;
+}
+
+.btn-lider {
+    background-color: #d84315;
+}
+
+.btn-lider:hover {
+    background-color: #bf360c;
+}
+
+/* Modal de Autenticación */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
+}
+
+.modal-content {
+    background-color: #ffffff;
+    margin: 10% auto;
+    padding: 35px;
+    border-radius: 12px;
+    width: 340px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 0;
+    color: #002147;
+}
+
+.close {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #95a5a6;
+}
+
+.close:hover {
+    color: #000000;
+}
+
+.modal label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #34495e;
+}
+
+.modal input {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0 18px 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.btn-ingresar {
+    background-color: #1b5e20;
+    color: #ffffff;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 1rem;
+    text-transform: uppercase;
+}
+
+.btn-ingresar:hover {
+    background-color: #0d3b13;
+}
+
+/* Dashboard Principal */
+.user-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 18px 25px;
+    border-radius: 10px;
+    margin: 20px auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.badge {
+    background: #e0f2f1;
+    color: #004d40;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+}
+
+.btn-logout {
+    background: #c62828;
+    color: #ffffff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* NAVEGACIÓN POR PESTAÑAS CORPORATIVAS */
+.tabs-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 25px;
+    border-bottom: 3px solid #002147;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #e2e8f0;
+    color: #334155;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px 8px 0 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+    background: #cbd5e1;
+    color: #002147;
+}
+
+.tab-btn.active {
+    background: #002147;
+    color: #ffffff;
+}
+
+.tab-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.panel-box {
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.placeholder-box {
+    padding: 30px;
+    background: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    text-align: center;
+    color: #64748b;
+}
+
+/* Contenedor Adaptable para Canva Embed */
+.canva-responsive-wrapper {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-top: 56.25%;
+    margin-top: 15px;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.canva-responsive-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Estilos de Tablas */
+.table-responsive {
+    overflow-x: auto;
+    max-height: 520px;
+}
+
+table, .tabla-reporte {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 0.88rem;
+}
+
+th, td {
+    border: 1px solid #e2e8f0;
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+th {
+    background-color: #002147;
+    color: #ffffff;
+    font-weight: 700;
+    position: sticky;
+    top: 0;
+}
+
+tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+tr:hover {
+    background-color: #e0f2f1;
+}
+
+/* Estilos Exclusivos para la Nómina */
+.nomina-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.logo-naturgy {
+    height: 48px;
+    width: auto;
+    object-fit: contain;
+}
+
+.nomina-header h2 {
+    margin: 0;
+    color: #002147;
+    font-size: 1.45rem;
+    font-weight: 700;
+}
+
+.nomina-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 25px;
+}
+
+.nomina-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.supervisor-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #002147;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #002147;
+}
+
+.tabla-nomina {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabla-nomina th {
+    background-color: #f1f5f9;
+    color: #334155;
+    font-weight: 700;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 2px solid #cbd5e1;
+}
+
+.tabla-nomina td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.tabla-nomina tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Badges de Turnos */
+.badge-turno {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.badge-turno.tm {
+    background-color: #e0f2fe;
+    color: #0369a1;
+}
+
+.badge-turno.tt {
+    background-color: #fef3c7;
+    color: #b45309;
+}
+
+/* Estilos para Cabecera de Panel con Selector de Mes */
+.panel-header-filter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.panel-header-filter h3 {
+    margin: 0;
+    color: #002147;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f1f5f9;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+}
+
+.select-mes {
+    padding: 6px 12px;
+    border: 1px solid #94a3b8;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #002147;
+    background-color: #ffffff;
+    cursor: pointer;
+}
+
+.select-mes:focus {
+    outline: none;
+    border-color: #002147;
+}
+/* ==========================================
+   ESTILOS PARA EL MODO OSCURO (DARK MODE)
+   ========================================== */
+
+/* Botón de alternancia en la cabecera */
+.btn-theme-toggle {
+    position: absolute;
+    top: 25px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.btn-theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.03);
+}
+
+.theme-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* Colores generales en Modo Oscuro */
+body.dark-mode {
+    background-color: #0f172a;
+    color: #f1f5f9;
+}
+
+body.dark-mode .card-equipo,
+body.dark-mode .panel-box,
+body.dark-mode .user-bar,
+body.dark-mode .modal-content,
+body.dark-mode .nomina-card {
+    background-color: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    color: #f8fafc;
+}
+
+body.dark-mode .card-equipo h2,
+body.dark-mode .panel-header-filter h3,
+body.dark-mode .modal-content h2,
+body.dark-mode .nomina-header h2,
+body.dark-mode .supervisor-title {
+    color: #38bdf8;
+}
+
+body.dark-mode .card-equipo p,
+body.dark-mode .placeholder-box,
+body.dark-mode label {
+    color: #94a3b8;
+}
+
+body.dark-mode .placeholder-box {
+    background-color: #0f172a;
+    border-color: #334155;
+}
+
+/* Pestañas en Modo Oscuro */
+body.dark-mode .tabs-nav {
+    border-bottom-color: #38bdf8;
+}
+
+body.dark-mode .tab-btn {
+    background-color: #334155;
+    color: #cbd5e1;
+}
+
+body.dark-mode .tab-btn:hover {
+    background-color: #475569;
+    color: #ffffff;
+}
+
+body.dark-mode .tab-btn.active {
+    background-color: #0284c7;
+    color: #ffffff;
+}
+
+/* Tablas en Modo Oscuro */
+body.dark-mode th {
+    background-color: #0284c7;
+    color: #ffffff;
+    border-color: #334155;
+}
+
+body.dark-mode td {
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+body.dark-mode tr:nth-child(even) {
+    background-color: #0f172a;
+}
+
+body.dark-mode tr:hover {
+    background-color: #1e293b;
+}
+
+body.dark-mode .tabla-nomina th {
+    background-color: #0f172a;
+    color: #38bdf8;
+    border-color: #334155;
+}
+
+/* Selectores de Mes e Inputs en Modo Oscuro */
+body.dark-mode .filter-group {
+    background-color: #0f172a;
+    border-color: #334155;
+}
+
+body.dark-mode .select-mes,
+body.dark-mode .modal input {
+    background-color: #0f172a;
+    color: #f8fafc;
+    border-color: #475569;
+}
+
+body.dark-mode .close {
+    color: #94a3b8;
+}
+
+body.dark-mode .close:hover {
+    color: #ffffff;
+}
+/* ==========================================
+   ESTILOS SUB-PESTAÑAS Y GLOSARIO DE CALIDAD
+   ========================================== */
+
+/* Sub-pestañas internas */
+.subtabs-nav {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0 20px 0;
+    border-bottom: 2px solid #cbd5e1;
+}
+
+.subtab-btn {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-bottom: none;
+    padding: 8px 16px;
+    border-radius: 6px 6px 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.subtab-btn:hover {
+    background: #e2e8f0;
+    color: #002147;
+}
+
+.subtab-btn.active {
+    background: #002147;
+    color: #ffffff;
+    border-color: #002147;
+}
+
+.subtab-content {
+    display: none;
+}
+
+.subtab-content.active {
+    display: block;
+}
+
+/* Tarjetas del Glosario */
+.glosario-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.glosario-card {
+    display: flex;
+    gap: 15px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 5px solid #002147;
+    border-radius: 8px;
+    padding: 18px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.glosario-num {
+    background: #002147;
+    color: #ffffff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.glosario-info {
+    flex-grow: 1;
+}
+
+.glosario-info h4 {
+    margin: 0 0 8px 0;
+    color: #002147;
+    font-size: 1.05rem;
+}
+
+.glosario-info p {
+    margin: 0 0 6px 0;
+    color: #334155;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.glosario-alerta {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    border-radius: 6px;
+    color: #9f1239;
+    font-size: 0.88rem;
+}
+
+/* Soporte para Modo Oscuro en Glosario */
+body.dark-mode .subtabs-nav {
+    border-bottom-color: #38bdf8;
+}
+
+body.dark-mode .subtab-btn {
+    background: #1e293b;
+    color: #94a3b8;
+    border-color: #334155;
+}
+
+body.dark-mode .subtab-btn.active {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+}
+
+body.dark-mode .glosario-card {
+    background: #1e293b;
+    border-color: #334155;
+    border-left-color: #38bdf8;
+}
+
+body.dark-mode .glosario-num {
+    background: #0284c7;
+}
+
+body.dark-mode .glosario-info h4 {
+    color: #38bdf8;
+}
+
+body.dark-mode .glosario-info p {
+    color: #e2e8f0;
+}
+
+body.dark-mode .glosario-alerta {
+    background: #31121f;
+    border-color: #881337;
+    color: #fecdd3;
+}
+/* ==========================================
+   ESTILOS CABECERA DE CALIDAD Y OBJETIVO 85%
+   ========================================== */
+
+.calidad-header-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 18px 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.calidad-brand {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.calidad-brand h4 {
+    margin: 0 0 4px 0;
+    color: #002147;
+    font-size: 1.25rem;
+}
+
+.calidad-brand p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+/* Badge destacado Objetivo 85% */
+.objetivo-badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f0fdf4;
+    border: 2px solid #22c55e;
+    padding: 10px 20px;
+    border-radius: 10px;
+}
+
+.objetivo-icon {
+    font-size: 1.8rem;
+}
+
+.objetivo-label {
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #15803d;
+}
+
+.objetivo-val {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #166534;
+}
+
+/* Badges de notas en la tabla */
+.badge-cumple {
+    background-color: #dcfce7;
+    color: #15803d;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+}
+
+.badge-nocumple {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+}
+
+/* Modo Oscuro para Calidad */
+body.dark-mode .calidad-header-box {
+    background-color: #1e293b;
+    border-color: #334155;
+}
+
+body.dark-mode .calidad-brand h4 {
+    color: #38bdf8;
+}
+
+body.dark-mode .calidad-brand p {
+    color: #94a3b8;
+}
+
+body.dark-mode .objetivo-badge {
+    background-color: #062c19;
+    border-color: #16a34a;
+}
+
+body.dark-mode .objetivo-label {
+    color: #4ade80;
+}
+
+body.dark-mode .objetivo-val {
+    color: #86efac;
+}
+
+.select-estado-logueo {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-weight: bold;
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+.select-estado-logueo:focus {
+    border-color: #0d6efd;
+    outline: none;
+}
+
+/* Base de los selectores */
+.select-estado-logueo {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+/* F: Fondo gris, letra negra */
+.estado-F { background-color: #e0e0e0 !important; color: #000000 !important; }
+
+/* V: Fondo amarillo claro, letra mostaza */
+.estado-V { background-color: #f6eb85 !important; color: #b78103 !important; }
+
+/* RH: Fondo verde claro, letra verde oscuro */
+.estado-RH { background-color: #c8e6c9 !important; color: #1b5e20 !important; }
+
+/* E: Fondo celeste, letra azul */
+.estado-E { background-color: #b3e5fc !important; color: #0d47a1 !important; }
+
+/* AI: Fondo naranja claro, letra naranja oscura */
+.estado-AI { background-color: #ffe0b2 !important; color: #e65100 !important; }
+
+/* L: Fondo rosa pastel, letra fucsia */
+.estado-L { background-color: #cb839c !important; color: #9c0441 !important; }
+
+/* ART: Fondo azul, letra celeste */
+.estado-ART { background-color: #033e78 !important; color: #e0f7fa !important; }
+
+/* EX: Fondo acqua, letra verde petróleo */
+.estado-EX { background-color: #5bf0d5 !important; color: #004d40 !important; }
+
+/* C: Fondo naranja, letra naranja pastel */
+.estado-C { background-color: #cc8823 !important; color: #ffe0b2 !important; }
+
+/* B: Fondo negro, letra gris claro */
+.estado-B { background-color: #212121 !important; color: #e0e0e0 !important; }
+
+/* FER: Fondo púrpura / borraja, letra blanca en negrita */
+.estado-FER {
+    background-color: #660d0d !important;
+    color: #f1b0b0 !important;
+}
