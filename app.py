@@ -7,6 +7,53 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, session
 from werkzeug.utils import secure_filename
 
+# Importar librerías de métricas de Prometheus
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+import time
+
+# DEFINICIÓN DE MÉTRICAS OPERACIONALES (TP08 / TP12C)
+REQUEST_COUNT = Counter(
+    'flask_http_request_total', 
+    'Total de peticiones HTTP en la aplicacion', 
+    ['method', 'endpoint', 'status_code']
+)
+
+REQUEST_LATENCY = Histogram(
+    'flask_http_request_duration_seconds', 
+    'Latencia de las peticiones HTTP en segundos', 
+    ['endpoint']
+)
+
+FILE_UPLOAD_COUNT = Counter(
+    'flask_file_uploads_total', 
+    'Total de archivos de logueo/calidad subidos', 
+    ['status']
+)
+
+# Middleware para medir tiempo y contar peticiones
+@app.before_request
+def start_timer():
+    request._start_time = time.time()
+
+@app.after_request
+def record_metrics(response):
+    if hasattr(request, '_start_time'):
+        resp_time = time.time() - request._start_time
+        endpoint = request.endpoint or 'unknown'
+        REQUEST_LATENCY.labels(endpoint=endpoint).observe(resp_time)
+        REQUEST_COUNT.labels(
+            method=request.method, 
+            endpoint=endpoint, 
+            status_code=response.status_code
+        ).inc()
+    return response
+
+# ENDPOINT DEDICADO PARA PROMETHEUS (/metrics)
+@app.route('/metrics', methods=['GET'])
+def metrics():
+    """Expone las metricas de la aplicacion en formato Prometheus"""
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
+    
 # ==========================================
 # 1. CONFIGURACIÓN INICIAL Y ENTORNO
 # ==========================================
