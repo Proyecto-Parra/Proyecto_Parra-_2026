@@ -1,122 +1,100 @@
 import os
 import re
-import pandas as pd
 import json
-from flask import Flask, request, jsonify, render_template, session
-from werkzeug.utils import secure_filename
+import pandas as pd
+from collections import OrderedDict
 from dotenv import load_dotenv
+from flask import Flask, render_template, request, jsonify, session
+from werkzeug.utils import secure_filename
 
-app = Flask(__name__)
-app.secret_key = 'clave_desarrollo_local_2026'
+# ==========================================
+# 1. CONFIGURACIÓN INICIAL Y ENTORNO
+# ==========================================
 
-# Carga las variables definidas en el archivo .env
+# Carga obligatoria de variables del archivo .env antes de acceder a ellas
 load_dotenv()
 
-# Carga de Nóminas desde el .env para la pestaña de Nómina
+app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'clave_desarrollo_local_2026')
+
+# Carpeta de destino para archivos subidos
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+# ==========================================
+# 2. CARGA DE NÓMINAS Y USUARIOS DESDE .ENV
+# ==========================================
+
 def cargar_nomina_env(var_name):
+    """Auxiliar para parsear JSONs de nóminas definidos en el .env"""
     try:
         raw = os.getenv(var_name, '{}')
         return json.loads(raw)
     except Exception as e:
-        print(f"Error al parsear {var_name} del .env: {e}")
+        print(f"⚠️ Error al parsear {var_name} del .env: {e}")
         return {}
 
+# Carga de Nóminas oficiales por equipo
 NOMINA_BAN = cargar_nomina_env('NOMINA_BAN')
 NOMINA_SAN_JUAN = cargar_nomina_env('NOMINA_SAN_JUAN')
 NOMINA_NOA = cargar_nomina_env('NOMINA_NOA')
 
-# Mapeo invertido exclusivo para Equipo BAN (Nombre -> Legajo)
+# Mapeo invertido para búsquedas por Nombre -> Legajo en Equipo BAN
 NOMINA_POR_NOMBRE_BAN = {str(v).strip().upper(): str(k).strip() for k, v in NOMINA_BAN.items()}
 
-# Base de datos de usuarios segura (sin contraseñas explícitas en el código)
+# Base de datos de usuarios (Líderes y Asesores con contraseñas desde .env)
 USUARIOS = {
-    # --- LÍDERES (Gestión total) ---
+    # --- LÍDERES (Gestión total de archivos y equipos) ---
     "kparra": {
-        "password": os.environ.get('PASS_KPARRA'),
+        "password": os.getenv('PASS_KPARRA', 'admin2026'),
         "rol": "lider",
         "equipo": "TODOS"
     },
     "lherrera": {
-        "password": os.environ.get('PASS_LHERRERA'),
+        "password": os.getenv('PASS_LHERRERA', 'admin2026'),
         "rol": "lider",
         "equipo": "TODOS"
     },
 
-    # --- ASESORES (Solo lectura) ---
-    "mquintana": {
-        "password": os.environ.get('PASS_MQUINTANA'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "aescobar": {
-        "password": os.environ.get('PASS_AESCOBAR'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "lganino": {
-        "password": os.environ.get('PASS_LGANINO'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "aherbas": {
-        "password": os.environ.get('PASS_AHERBAS'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "frios": {
-        "password": os.environ.get('PASS_FRIOS'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "carce": {
-        "password": os.environ.get('PASS_CARCE'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "arios": {
-        "password": os.environ.get('PASS_ARIOS'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "fruiz": {
-        "password": os.environ.get('PASS_FRUIZ'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "vgarcia": {
-        "password": os.environ.get('PASS_VGARCIA'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "nbogado": {
-        "password": os.environ.get('PASS_NBOGADO'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "vgonzalez": {
-        "password": os.environ.get('PASS_VGONZALEZ'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    },
-    "sgonzalez": {
-        "password": os.environ.get('PASS_SGONZALEZ'),
-        "rol": "asesor",
-        "equipo": "RAC"
-    }
+    # --- ASESORES (Lectura de reportes) ---
+    "mquintana": {"password": os.getenv('PASS_MQUINTANA'), "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "aescobar":  {"password": os.getenv('PASS_AESCOBAR'),  "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "lganino":   {"password": os.getenv('PASS_LGANINO'),   "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "aherbas":   {"password": os.getenv('PASS_AHERBAS'),   "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "frios":     {"password": os.getenv('PASS_FRIOS'),     "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "carce":     {"password": os.getenv('PASS_CARCE'),     "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "arios":     {"password": os.getenv('PASS_ARIOS'),     "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "fruiz":     {"password": os.getenv('PASS_FRUIZ'),     "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "vgarcia":   {"password": os.getenv('PASS_VGARCIA'),   "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "nbogado":   {"password": os.getenv('PASS_NBOGADO'),   "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "vgonzalez": {"password": os.getenv('PASS_VGONZALEZ'), "rol": "asesor", "equipo": "NATURGY BAN CAU"},
+    "sgonzalez": {"password": os.getenv('PASS_SGONZALEZ'), "rol": "asesor", "equipo": "NATURGY BAN CAU"}
 }
 
+
+# ==========================================
+# 3. FUNCIONES AUXILIARES DE PROCESAMIENTO
+# ==========================================
+
 def clean_str(val):
+    """Limpia valores nulos o vacíos convirtiéndolos a string plano."""
     if pd.isna(val) or val is None:
         return ''
     return str(val).strip()
 
+
 def procesar_archivo_reporte(filepath):
-    # CORREGIDO: Garantizar obtención de la extensión como cadena de texto
+    """
+    Lee planillas individuales o grupales de logueo (CSV/Excel)
+    y las transforma en DataFrames de 'Hora de Entrada' y 'Hora de Salida'.
+    """
     split_res = os.path.splitext(filepath)
     ext = str(split_res[1]).lower() if isinstance(split_res, (list, tuple)) else str(split_res).lower()
     df_raw = None
     
-    # 1. Intentar lectura como Excel
+    # 1. Intentar lectura como Excel (.xlsx, .xls)
     if ext in ['.xlsx', '.xls']:
         for engine in ['openpyxl', 'xlrd', None]:
             try:
@@ -145,7 +123,7 @@ def procesar_archivo_reporte(filepath):
     raw_text_list = [clean_str(x) for x in df_raw.values.flatten()]
     raw_text = ' '.join([x for x in raw_text_list if x])
 
-    # CASO A: Reporte Individual del sistema (reporte_csv.csv)
+    # CASO A: Reporte Individual por Agente
     if 'AGENTE:' in raw_text.upper() or 'REPORTE MENSUAL POR AGENTE' in raw_text.upper():
         agente = 'ASESOR'
         for r_idx in range(min(10, len(df_raw))):
@@ -214,7 +192,7 @@ def procesar_archivo_reporte(filepath):
 
         return [pd.DataFrame([row1, row2])]
 
-    # CASO B: Archivo grupal
+    # CASO B: Reporte Grupal
     blocks = []
     current_agent = None
     dates = []
@@ -255,8 +233,59 @@ def procesar_archivo_reporte(filepath):
 
     return blocks
 
+
+# ==========================================
+# 4. RUTAS PRINCIPALES Y AUTENTICACIÓN
+# ==========================================
+
+@app.route('/')
+def index():
+    """Renderea la vista web principal"""
+    return render_template('index.html')
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    """Valida usuarios, roles y asignación de equipo"""
+    data = request.get_json() or {}
+    usuario = data.get('usuario', '').strip().lower()
+    password = data.get('password', '').strip()
+    equipo_solicitado = data.get('equipo', '').strip()
+
+    if usuario not in USUARIOS or USUARIOS[usuario]['password'] != password:
+        return jsonify({"success": False, "message": "Usuario o contraseña incorrectos"}), 401
+
+    user_info = USUARIOS[usuario]
+
+    # Restricción de equipo para asesores
+    if user_info['rol'] != 'lider' and user_info['equipo'] != "TODOS" and user_info['equipo'] != equipo_solicitado:
+        return jsonify({
+            "success": False, 
+            "message": f"Acceso denegado: El usuario '{usuario}' pertenece al equipo '{user_info['equipo']}'."
+        }), 403
+
+    session['usuario'] = usuario
+    session['rol'] = user_info['rol']
+    session['equipo'] = equipo_solicitado if user_info['rol'] == 'lider' else user_info['equipo']
+
+    return jsonify({
+        "success": True,
+        "usuario": usuario,
+        "rol": user_info['rol'],
+        "equipo": session['equipo']
+    })
+
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    """Cierra la sesión del usuario"""
+    session.clear()
+    return jsonify({"success": True})
+
+
 @app.route('/get_nomina/<equipo>', methods=['GET'])
 def get_nomina(equipo):
+    """Devuelve la nómina correspondiente al equipo seleccionado"""
     equipo_upper = equipo.upper()
 
     if "BAN" in equipo_upper:
@@ -273,46 +302,14 @@ def get_nomina(equipo):
     
     return jsonify({"success": False, "message": "Nómina no encontrada para este equipo"})
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.get_json() or {}
-    usuario = data.get('usuario', '').strip()
-    password = data.get('password', '').strip()
-    equipo_solicitado = data.get('equipo', '').strip()
-
-    if usuario not in USUARIOS or USUARIOS[usuario]['password'] != password:
-        return jsonify({"success": False, "message": "Usuario o contraseña incorrectos"}), 401
-
-    user_info = USUARIOS[usuario]
-
-    if user_info['rol'] != 'lider' and user_info['equipo'] != equipo_solicitado:
-        return jsonify({
-            "success": False, 
-            "message": f"Acceso denegado: El usuario '{usuario}' solo puede ingresar al equipo '{user_info['equipo']}'."
-        }), 403
-
-    session['usuario'] = usuario
-    session['rol'] = user_info['rol']
-    session['equipo'] = equipo_solicitado if user_info['rol'] == 'lider' else user_info['equipo']
-
-    return jsonify({
-        "success": True,
-        "usuario": usuario,
-        "rol": user_info['rol'],
-        "equipo": session['equipo']
-    })
-
-@app.route('/logout', methods=['POST'])
-def logout():
-    session.clear()
-    return jsonify({"success": True})
+# ==========================================
+# 5. CARGA Y CONSOLIDACIÓN DE REPORTES
+# ==========================================
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    """Permite al Líder subir planillas de reportes (.csv, .xlsx, .xls)"""
     if session.get('rol') != 'lider':
         return jsonify({"success": False, "message": "Se requieren permisos de Líder."}), 403
 
@@ -324,11 +321,10 @@ def upload_file():
         return jsonify({"success": False, "message": "Por favor selecciona un archivo válido."}), 400
 
     filename = secure_filename(file.filename)
-    split_res = os.path.splitext(filename)
-    ext = str(split_res[1]).lower() if isinstance(split_res, (list, tuple)) else str(split_res).lower()
+    ext = os.path.splitext(filename)[1].lower()
     
     if ext not in ['.csv', '.xlsx', '.xls']:
-        return jsonify({"success": False, "message": "Formato de archivo no permitido. Debe ser .csv, .xlsx o .xls."}), 400
+        return jsonify({"success": False, "message": "Formato no permitido. Debe ser .csv, .xlsx o .xls."}), 400
 
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
@@ -338,8 +334,10 @@ def upload_file():
         "message": f"Reporte '{filename}' cargado correctamente."
     })
 
+
 @app.route('/obtener_reporte', methods=['GET'])
 def obtener_reporte():
+    """Consolida todos los archivos en uploads/ y genera la tabla HTML"""
     if 'usuario' not in session:
         return jsonify({"success": False, "message": "Sesión no iniciada"}), 401
 
@@ -397,67 +395,14 @@ def obtener_reporte():
             "message": f"Error al procesar la consolidación: {str(e)}"
         }), 500
 
-def procesar_excel_calidad_detalle(filepath):
-    split_res = os.path.splitext(filepath)
-    ext = str(split_res[1]).lower() if isinstance(split_res, (list, tuple)) else str(split_res).lower()
-    df_raw = None
-    
-    if ext in ['.xlsx', '.xls']:
-        for engine in ['openpyxl', 'xlrd', None]:
-            try:
-                df_raw = pd.read_excel(filepath, sheet_name=0, header=None, engine=engine)
-                if df_raw is not None and not df_raw.empty:
-                    break
-            except Exception:
-                pass
-                
-    if df_raw is None or df_raw.empty:
-        for enc in ['utf-8', 'latin1', 'cp1252']:
-            try:
-                df_raw = pd.read_csv(filepath, sep=None, encoding=enc, header=None, engine='python')
-                if df_raw is not None and not df_raw.empty:
-                    break
-            except Exception:
-                pass
 
-    if df_raw is None or df_raw.empty:
-        return None
-
-    header_idx = None
-    for r_idx in range(min(20, len(df_raw))):
-        row_str = ' '.join([clean_str(x) for x in df_raw.iloc[r_idx].values]).upper()
-        if 'LEGAJO' in row_str and 'ASESOR' in row_str:
-            header_idx = r_idx
-            break
-
-    if header_idx is None:
-        return None
-
-    header_cols = [clean_str(x) for x in df_raw.iloc[header_idx].values]
-    df_data = df_raw.iloc[header_idx + 1:].copy()
-    df_data.columns = header_cols
-
-    df_data = df_data.dropna(how='all')
-    if df_data.empty:
-        return None
-
-    def formato_nota(val):
-        try:
-            num = float(str(val).replace('%', '').replace(',', '.').strip())
-            if num >= 85:
-                return f'<span class="badge-cumple">{num:.1f}%</span>'
-            else:
-                return f'<span class="badge-nocumple">{num:.1f}%</span>'
-        except Exception:
-            return clean_str(val)
-
-    if 'NOTA ENC' in df_data.columns:
-        df_data['NOTA ENC'] = df_data['NOTA ENC'].apply(formato_nota)
-
-    return df_data.fillna('---')
+# ==========================================
+# 6. GESTIÓN DE CALIDAD Y MONITOREOS (RAC)
+# ==========================================
 
 @app.route('/upload_calidad_resumen', methods=['POST'])
 def upload_calidad_resumen():
+    """Procesa planillas de Calidad para construir los resúmenes por RAC y TL"""
     if session.get('rol') and session.get('rol') != 'lider':
         return jsonify({"success": False, "message": "Se requieren permisos de Líder."}), 403
 
@@ -470,28 +415,17 @@ def upload_calidad_resumen():
 
     try:
         upload_dir = app.config.get('UPLOAD_FOLDER', 'uploads')
-        os.makedirs(upload_dir, exist_ok=True)
-
         filename = secure_filename(file.filename)
         filepath = os.path.join(upload_dir, 'resumen_' + filename)
         file.save(filepath)
 
-        split_res = os.path.splitext(filepath)
-        ext = str(split_res[1]).lower() if isinstance(split_res, (list, tuple)) else str(split_res).lower()
+        ext = os.path.splitext(filepath)[1].lower()
         df_raw = None
 
-        # 1. Leer la solapa 'Consolidados por RAC'
         if ext in ['.xlsx', '.xls', '.xlsm']:
             try:
                 xl = pd.ExcelFile(filepath)
-                target_sheet = None
-                for sheet in xl.sheet_names:
-                    if 'CONSOLIDADOS POR RAC' in sheet.upper() or 'CONSOLIDADO' in sheet.upper():
-                        target_sheet = sheet
-                        break
-
-                if target_sheet is None and xl.sheet_names:
-                    target_sheet = xl.sheet_names[0]
+                target_sheet = next((s for s in xl.sheet_names if 'CONSOLIDADOS POR RAC' in s.upper() or 'CONSOLIDADO' in s.upper()), xl.sheet_names[0] if xl.sheet_names else None)
 
                 if target_sheet:
                     for engine in ['openpyxl', 'xlrd', None]:
@@ -505,21 +439,9 @@ def upload_calidad_resumen():
                 print("Aviso al abrir libro Excel:", str(e_xl))
 
         if df_raw is None or df_raw.empty:
-            for enc in ['utf-8', 'latin1', 'cp1252']:
-                for sep in [';', ',', '\t', None]:
-                    try:
-                        df_raw = pd.read_csv(filepath, sep=sep, encoding=enc, header=None, on_bad_lines='skip', engine='python')
-                        if df_raw is not None and not df_raw.empty and df_raw.shape[1] > 1:
-                            break
-                    except Exception:
-                        continue
-                if df_raw is not None and not df_raw.empty:
-                    break
+            return jsonify({"success": False, "message": "No se encontraron datos válidos en la hoja seleccionada."}), 400
 
-        if df_raw is None or df_raw.empty:
-            return jsonify({"success": False, "message": "No se encontraron datos en la hoja 'Consolidados por RAC'."}), 400
-
-        # 2. Localizar la fila de encabezados de la Tabla Principal
+        # Localizar la fila de encabezados
         header_idx = None
         for r_idx in range(len(df_raw)):
             row_str = ' '.join([clean_str(x).upper() for x in df_raw.iloc[r_idx].values if pd.notna(x)])
@@ -528,11 +450,10 @@ def upload_calidad_resumen():
                 break
 
         if header_idx is None:
-            return jsonify({"success": False, "message": "No se encontró la tabla principal en la planilla."}), 400
+            return jsonify({"success": False, "message": "No se encontró la tabla principal en la planilla de calidad."}), 400
 
         raw_headers = [clean_str(x).upper() for x in df_raw.iloc[header_idx].values]
         
-        # Mapear índices numéricos excluyendo Estado y 4º Monitoreo
         idx_map = {}
         for c_idx, h_text in enumerate(raw_headers):
             if ('LÍDER' in h_text or 'LIDER' in h_text) and 'Líder' not in idx_map:
@@ -550,7 +471,6 @@ def upload_calidad_resumen():
             elif ('NOTA' in h_text or 'FINAL' in h_text) and 'Nota Final' not in idx_map:
                 idx_map['Nota Final'] = c_idx
 
-        # 3. Funciones auxiliares de formateo
         def formatear_nota(num):
             try:
                 val_num = float(num)
@@ -582,13 +502,8 @@ def upload_calidad_resumen():
             except Exception:
                 return 0
 
-        # 4. Procesar la tabla de asesores
         rows_asesores = []
-        lideres_definidos = [
-            'HERRERA FERNANDEZ, LEILA SABRINA',
-            'PARRA YAÑEZ, KARINA BEATRIZ'
-        ]
-
+        lideres_definidos = ['HERRERA FERNANDEZ, LEILA SABRINA', 'PARRA YAÑEZ, KARINA BEATRIZ']
         matrix_data = df_raw.iloc[header_idx + 1:].values
 
         for row in matrix_data:
@@ -598,11 +513,7 @@ def upload_calidad_resumen():
             if asesor_val.upper() in ['', 'ASESOR', 'NAN', 'NONE', 'NONETYPE']:
                 continue
 
-            lider_coincide = None
-            for l_target in lideres_definidos:
-                if l_target.upper() in lider_val.upper():
-                    lider_coincide = l_target
-                    break
+            lider_coincide = next((l_target for l_target in lideres_definidos if l_target.upper() in lider_val.upper()), None)
 
             if lider_coincide:
                 m1_num = parse_float(row[idx_map['1º Monitoreo']]) if '1º Monitoreo' in idx_map else None
@@ -623,7 +534,6 @@ def upload_calidad_resumen():
                     '_nota_raw': nota_num
                 })
 
-        # 5. Calcular dinámicamente la Tabla Resumen (Team Leader, Monitoreos Totales y Promedios)
         rows_tl = []
         total_campana_qm = 0
         notas_campana = []
@@ -643,7 +553,6 @@ def upload_calidad_resumen():
                 'TOTAL': formatear_nota(prom_nota) if prom_nota is not None else '---'
             })
 
-        # Agregar Fila Total Campaña
         prom_campana = (sum(notas_campana) / len(notas_campana)) if notas_campana else None
         rows_tl.append({
             'Team Leader': 'TOTAL CAMPAÑA',
@@ -651,46 +560,27 @@ def upload_calidad_resumen():
             'TOTAL': formatear_nota(prom_campana) if prom_campana is not None else '---'
         })
 
-        # Limpiar llaves temporales del listado de asesores
         for r in rows_asesores:
             r.pop('_qm_raw', None)
             r.pop('_nota_raw', None)
 
-        # 6. Generar DataFrames y vistas HTML
         cols_finales_asesor = ['Líder', 'Asesor', '1º Monitoreo', '2º Monitoreo', '3º Monitoreo', 'QM', 'Nota Final']
         df_asesores = pd.DataFrame(rows_asesores, columns=cols_finales_asesor) if rows_asesores else pd.DataFrame(columns=cols_finales_asesor)
 
         cols_finales_tl = ['Team Leader', 'Monitoreos', 'TOTAL']
         df_tl = pd.DataFrame(rows_tl, columns=cols_finales_tl)
 
-        if not df_asesores.empty:
-            html_asesores = df_asesores.fillna('---').to_html(classes='table table-striped tabla-reporte', index=False, escape=False)
-        else:
-            html_asesores = '<p class="text-muted">No se encontraron registros de asesores para las líderes seleccionadas.</p>'
-
+        html_asesores = df_asesores.fillna('---').to_html(classes='table table-striped tabla-reporte', index=False, escape=False) if not df_asesores.empty else '<p class="text-muted">No se encontraron registros para las líderes seleccionadas.</p>'
         html_tl = df_tl.to_html(classes='table table-bordered tabla-tl-custom', index=False, escape=False)
+        
         html_tl_container = f'''
         <style>
-            .tabla-tl-custom {{
-                border: 2px solid #000 !important;
-                text-align: center;
-                font-weight: bold;
-            }}
-            .tabla-tl-custom th {{
-                background-color: #F79646 !important;
-                color: white !important;
-                text-align: center !important;
-                border: 1px solid #000 !important;
-            }}
-            .tabla-tl-custom td {{
-                border: 1px solid #000 !important;
-                vertical-align: middle !important;
-            }}
+            .tabla-tl-custom {{ border: 2px solid #000 !important; text-align: center; font-weight: bold; }}
+            .tabla-tl-custom th {{ background-color: #F79646 !important; color: white !important; text-align: center !important; border: 1px solid #000 !important; }}
+            .tabla-tl-custom td {{ border: 1px solid #000 !important; vertical-align: middle !important; }}
         </style>
         <div style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
-            <div style="min-width: 420px;">
-                {html_tl}
-            </div>
+            <div style="min-width: 420px;">{html_tl}</div>
         </div>
         '''
 
@@ -701,43 +591,34 @@ def upload_calidad_resumen():
         })
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            "success": False,
-            "message": f"Detalle del error: {type(e).__name__} - {str(e)}"
-        }), 400
+        return jsonify({"success": False, "message": f"Error: {type(e).__name__} - {str(e)}"}), 400
 
-from collections import OrderedDict
+
+# ==========================================
+# 7. REGISTRO Y MATRIZ DE LOGUEO
+# ==========================================
 
 @app.route('/upload_logueo', methods=['POST'])
 def upload_logueo():
-    print("---> Petición recibida en /upload_logueo")
-    
+    """Procesa e integra planillas de fichada diaria de logueo con selectores de estados"""
     if 'file' not in request.files:
-        return jsonify({"success": False, "message": "No se adjuntó ningún archivo en la petición."}), 400
+        return jsonify({"success": False, "message": "No se adjuntó ningún archivo."}), 400
 
     file = request.files['file']
     if file.filename == '':
-        return jsonify({"success": False, "message": "Archivo no seleccionado o no válido."}), 400
+        return jsonify({"success": False, "message": "Archivo no válido."}), 400
 
     try:
         upload_dir = app.config.get('UPLOAD_FOLDER', 'uploads')
-        os.makedirs(upload_dir, exist_ok=True)
-
         original_filename = secure_filename(file.filename)
         filepath = os.path.join(upload_dir, 'logueo_' + original_filename)
         file.save(filepath)
 
-        split_res = os.path.splitext(filepath)
-        ext = str(split_res[1]).lower() if isinstance(split_res, (list, tuple)) else str(split_res).lower()
-        
+        ext = os.path.splitext(filepath)[1].lower()
         asesor_nombre = request.form.get('asesor_nombre', '').strip()
         df_raw = None
 
-        # 1. ESTRATEGIA MULTI-LECTURA (Resistente a fallos)
-        
-        # Intento A: OpenPyXL descombinando celdas nativas (solo para .xlsx modernos)
+        # Estrategias de lectura
         if ext in ['.xlsx', '.xlsm']:
             try:
                 import openpyxl
@@ -752,177 +633,74 @@ def upload_logueo():
 
                 data_matrix = [[cell for cell in row] for row in ws.iter_rows(values_only=True)]
                 temp_df = pd.DataFrame(data_matrix)
-                if temp_df is not None and not temp_df.empty and temp_df.shape[1] >= 2:
+                if temp_df is not None and not temp_df.empty:
                     df_raw = temp_df
-            except Exception as e_opx:
-                print("Intento A (openpyxl) omitido:", e_opx)
-
-        # Intento B: Pandas con motor xlrd u openpyxl estándar (para .xls y .xlsx)
-        if df_raw is None or df_raw.empty:
-            if ext in ['.xlsx', '.xls', '.xlsm']:
-                for eng in ['openpyxl', 'xlrd', None]:
-                    try:
-                        temp_df = pd.read_excel(filepath, header=None, engine=eng)
-                        if temp_df is not None and not temp_df.empty and temp_df.shape[1] >= 2:
-                            df_raw = temp_df
-                            break
-                    except Exception:
-                        continue
-
-        # Intento C: Tablas HTML exportadas como .xls/.xlsx
-        if df_raw is None or df_raw.empty:
-            try:
-                html_dfs = pd.read_html(filepath)
-                if html_dfs and len(html_dfs) > 0:
-                    df_raw = html_dfs[0]
             except Exception:
                 pass
 
-        # Intento D: Archivos CSV o texto plano
         if df_raw is None or df_raw.empty:
-            for enc in ['utf-8', 'latin1', 'cp1252', 'iso-8859-1']:
-                for sep in [';', ',', '\t', None]:
-                    try:
-                        temp_df = pd.read_csv(filepath, sep=sep, encoding=enc, header=None, on_bad_lines='skip', engine='python')
-                        if temp_df is not None and not temp_df.empty and temp_df.shape[1] >= 2:
-                            df_raw = temp_df
-                            break
-                    except Exception:
-                        continue
-                if df_raw is not None and not df_raw.empty:
-                    break
+            for enc in ['utf-8', 'latin1', 'cp1252']:
+                try:
+                    df_raw = pd.read_csv(filepath, sep=None, encoding=enc, header=None, engine='python')
+                    if df_raw is not None and not df_raw.empty:
+                        break
+                except Exception:
+                    continue
 
         if df_raw is None or df_raw.empty:
-            return jsonify({
-                "success": False, 
-                "message": "No se pudieron extraer datos del archivo subido. Verifica el formato del archivo."
-            }), 400
+            return jsonify({"success": False, "message": "No se pudieron extraer datos del archivo subido."}), 400
 
-        # Rellenar valores nulos horizontalmente para resolver celdas combinadas no descombinadas
         df_raw = df_raw.ffill(axis=1)
 
-# 2. EXTRAER NOMBRE DEL AGENTE DENTRO DE LA PLANILLA
+        # Extracción del nombre del agente
         if not asesor_nombre:
-            for r in range(min(20, len(df_raw))):
-                for c in range(min(20, df_raw.shape[1])):
-                    val = clean_str(df_raw.iloc[r, c])
-                    
-                    # Normalizar espacios no separables (\xa0) y saltos de línea
-                    val_norm = val.replace('\xa0', ' ').replace('\n', ' ').replace('\r', ' ').strip()
-                    val_upper = val_norm.upper()
-                    
-                    if 'AGENTE:' in val_upper:
-                        # Extraer todo lo que esté después de 'AGENTE:'
-                        partes = val_norm.split('AGENTE:', 1) if 'AGENTE:' in val_norm else val_norm.split('Agente:', 1)
-                        if len(partes) > 1:
-                            posible_agente = partes[1].strip()
-                            
-                            # Si hay otro separador '|' más adelante, cortar hasta ahí
-                            if '|' in posible_agente:
-                                posible_agente = posible_agente.split('|')[0].strip()
-                                
-                            if posible_agente and len(posible_agente) > 1:
-                                asesor_nombre = posible_agente.upper()
-                                break
-                                
-                if asesor_nombre:
-                    break
-
-        # Búsqueda de respaldo si por alguna razón no venía en la misma celda
-        if not asesor_nombre:
-            palabras_clave = ['AGENTE', 'ASESOR', 'EMPLEADO', 'NOMBRE']
             for r in range(min(20, len(df_raw))):
                 for c in range(min(20, df_raw.shape[1])):
                     val = clean_str(df_raw.iloc[r, c]).replace('\xa0', ' ').strip()
-                    if any(k in val.upper() for k in palabras_clave):
-                        for step in range(1, 6):
-                            if c + step < df_raw.shape[1]:
-                                val_next = clean_str(df_raw.iloc[r, c + step]).replace('\xa0', ' ').strip()
-                                if val_next and len(val_next) > 2 and val_next.upper() not in palabras_clave:
-                                    asesor_nombre = val_next.upper()
-                                    break
-                        if asesor_nombre:
+                    if 'AGENTE:' in val.upper():
+                        partes = val.split('AGENTE:', 1) if 'AGENTE:' in val else val.split('Agente:', 1)
+                        if len(partes) > 1 and partes[1].strip():
+                            asesor_nombre = partes[1].split('|')[0].strip().upper()
                             break
                 if asesor_nombre:
                     break
 
-        # Respaldo final: Limpiar desde el nombre del archivo
         if not asesor_nombre:
-            nombre_limpio = os.path.splitext(original_filename)[0]
-            for p in ['logueo_', 'reporte_', 'LOGUEO_', 'REPORTE_']:
-                nombre_limpio = nombre_limpio.replace(p, '')
-            asesor_nombre = nombre_limpio.replace('_', ' ').replace('-', ' ').strip().upper()
+            asesor_nombre = os.path.splitext(original_filename)[0].replace('logueo_', '').replace('_', ' ').strip().upper()
 
- # 3. BUSCAR ENTRADA Y SALIDA
-        idx_entrada = None
-        idx_salida = None
-
-        for r_idx in range(len(df_raw)):
-            row_cells = [clean_str(x).upper() for x in df_raw.iloc[r_idx].values if pd.notna(x)]
-            row_str = ' '.join(row_cells)
-
-            if 'ENTRADA' in row_str and idx_entrada is None:
-                idx_entrada = r_idx
-            elif 'SALIDA' in row_str and idx_salida is None:
-                idx_salida = r_idx
+        # Filas de entrada y salida
+        idx_entrada = next((r for r in range(len(df_raw)) if 'ENTRADA' in ' '.join([clean_str(x).upper() for x in df_raw.iloc[r].values])), None)
+        idx_salida = next((r for r in range(len(df_raw)) if 'SALIDA' in ' '.join([clean_str(x).upper() for x in df_raw.iloc[r].values])), None)
 
         if idx_entrada is None or idx_salida is None:
-            return jsonify({
-                "success": False,
-                "message": f"No se detectaron filas de fichada (Entrada: {idx_entrada}, Salida: {idx_salida})."
-            }), 400
+            return jsonify({"success": False, "message": "No se detectaron filas de fichada."}), 400
 
-        idx_fechas = max(0, idx_entrada - 1)
-        
-        row_fechas = df_raw.iloc[idx_fechas]
+        row_fechas = df_raw.iloc[max(0, idx_entrada - 1)]
         row_entrada = df_raw.iloc[idx_entrada]
         row_salida = df_raw.iloc[idx_salida]
 
-        start_col = 2  # Columna C (índice 2)
-        max_col = min(34, df_raw.shape[1])  # Columna AH (índice 33)
+        logueo_entrada = OrderedDict({"Asesor": asesor_nombre, "Tipo": "Entrada"})
+        logueo_salida = OrderedDict({"Asesor": asesor_nombre, "Tipo": "Salida"})
 
-        # Crear diccionarios independientes para las filas de Entrada y Salida
-        logueo_entrada = OrderedDict()
-        logueo_salida = OrderedDict()
-
-        logueo_entrada["Asesor"] = asesor_nombre
-        logueo_entrada["Tipo"] = "Entrada"
-
-        logueo_salida["Asesor"] = asesor_nombre
-        logueo_salida["Tipo"] = "Salida"
-
-        for c_idx in range(start_col, max_col):
+        for c_idx in range(2, min(34, df_raw.shape[1])):
             val_f = clean_str(row_fechas[c_idx]) if c_idx < len(row_fechas) else ''
-            val_f_upper = val_f.upper()
-
-            # Filtrar columnas de Totales y fórmulas auxiliares
-            if any(t in val_f_upper for t in ['TOTAL', 'TOTALES', 'HS TOTALES', 'SUMA', 'Q1', 'Q2']):
+            if any(t in val_f.upper() for t in ['TOTAL', 'TOTALES', 'SUMA', 'Q1', 'Q2']):
                 continue
 
-            if val_f and val_f_upper not in ['NAN', 'NONE']:
-                fecha_label = val_f
-            else:
-                num_dia = c_idx - 1
-                fecha_label = f"Día {num_dia:02d}"
-
+            fecha_label = val_f if val_f and val_f.upper() not in ['NAN', 'NONE'] else f"Día {c_idx - 1:02d}"
             h_in = clean_str(row_entrada[c_idx]) if c_idx < len(row_entrada) else ''
             h_out = clean_str(row_salida[c_idx]) if c_idx < len(row_salida) else ''
 
             logueo_entrada[fecha_label] = h_in if h_in and h_in.upper() not in ['NAN', 'NONE', '---'] else '---'
             logueo_salida[fecha_label] = h_out if h_out and h_out.upper() not in ['NAN', 'NONE', '---'] else '---'
 
-# 4. NORMALIZAR NOMBRE Y CONSOLIDAR EN SESIÓN SIN DUPLICAR
-        # Normalizar espacios extras y formato para evitar duplicados del mismo asesor
         asesor_key = " ".join(asesor_nombre.upper().split())
-
         if 'logueos_acumulados' not in session:
             session['logueos_acumulados'] = {}
 
-        # Guardar / Sobrescribir registros del asesor para evitar duplicados
         session['logueos_acumulados'][f"{asesor_key}_ENTRADA"] = dict(logueo_entrada)
         session['logueos_acumulados'][f"{asesor_key}_SALIDA"] = dict(logueo_salida)
 
-# 5. REORGANIZAR Y ORDENAR COLUMNAS DE FECHAS DE FORMA CRONOLÓGICA
         todas_las_columnas = set()
         for reg in session['logueos_acumulados'].values():
             todas_las_columnas.update(reg.keys())
@@ -930,153 +708,76 @@ def upload_logueo():
         cols_fijas = ["Asesor", "Tipo"]
         cols_fechas = [c for c in todas_las_columnas if c not in cols_fijas]
 
-        # Criterio estricto de ordenamiento de fechas y días
         def criterio_orden_fechas(col_nombre):
-            import re
             texto = str(col_nombre).strip()
-            
-            # 1. Detectar fechas con formato DD/MM/YYYY o DD/MM
             match_fecha = re.search(r'(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?', texto)
             if match_fecha:
-                dia = int(match_fecha.group(1))
-                mes = int(match_fecha.group(2))
+                dia, mes = int(match_fecha.group(1)), int(match_fecha.group(2))
                 anio = int(match_fecha.group(3)) if match_fecha.group(3) else 2026
-                if anio < 100:
-                    anio += 2000
                 return (1, anio, mes, dia)
-
-            # 2. Detectar etiquetas de días (ej: "Día 01", "Día 2")
             match_dia = re.search(r'\d+', texto)
             if match_dia:
-                num_dia = int(match_dia.group(0))
-                return (2, 2026, 1, num_dia)
-
-            # 3. Cualquier otro encabezado al final
+                return (2, 2026, 1, int(match_dia.group(0)))
             return (3, 9999, 12, 31)
 
-        cols_fechas_ordenadas = sorted(cols_fechas, key=criterio_orden_fechas)
-        master_cols = cols_fijas + cols_fechas_ordenadas
-
+        master_cols = cols_fijas + sorted(cols_fechas, key=criterio_orden_fechas)
         session['logueos_master_cols'] = master_cols
         session.modified = True
 
-# 6. CREAR DATAFRAME AGRUPADO POR ASESOR Y CON FILA SEPARADORA
         registros = list(session['logueos_acumulados'].values())
-        
-        # Agrupar las filas internamente por Asesor (Entrada y Salida)
         asesores_map = OrderedDict()
         for reg in registros:
             nombre = reg.get("Asesor", "")
-            if nombre not in asesores_map:
-                asesores_map[nombre] = []
-            asesores_map[nombre].append(reg)
+            asesores_map.setdefault(nombre, []).append(reg)
 
         filas_consolidadas = []
         lista_asesores = list(asesores_map.keys())
 
         for idx, nombre in enumerate(lista_asesores):
-            filas_asesor = asesores_map[nombre]
-            
-            # Agregar la fila de Entrada y luego la de Salida del mismo asesor
-            for fila in filas_asesor:
-                filas_consolidadas.append(fila)
-
-            # Insertar fila vacía separadora SOLO entre asesores distintos
+            filas_consolidadas.extend(asesores_map[nombre])
             if idx < len(lista_asesores) - 1:
-                fila_vacia = {col: '' for col in master_cols}
-                filas_consolidadas.append(fila_vacia)
+                filas_consolidadas.append({col: '' for col in master_cols})
 
-# 7. CREAR DATAFRAME Y CONVERTIR A HTML CON SELECTORES MANUALES
         df_logueos = pd.DataFrame(filas_consolidadas)
+        df_logueos = df_logueos[[c for c in master_cols if c in df_logueos.columns]]
 
-        # Reordenar las columnas (Asesor -> Tipo -> Fechas...)
-        cols_finales = [c for c in master_cols if c in df_logueos.columns]
-        df_logueos = df_logueos[cols_finales]
-
-        # Ocultar la repetición del nombre del asesor en la fila de Salida
         df_logueos['Asesor_Display'] = df_logueos['Asesor']
         df_logueos.loc[df_logueos['Asesor_Display'] == df_logueos['Asesor_Display'].shift(1), 'Asesor_Display'] = ''
         df_logueos['Asesor'] = df_logueos['Asesor_Display']
         df_logueos = df_logueos.drop(columns=['Asesor_Display'])
 
-        # DICCIONARIO DE FERIADOS SIMPLIFICADO A (DÍA/MES)
         FERIADOS_DDMM = {
-            "01/01": "Año Nuevo",
-            "16/02": "Carnaval",
-            "17/02": "Carnaval",
-            "24/03": "Memoria",
-            "02/04": "Malvinas / Viernes Santo",
-            "01/05": "Trabajador",
-            "25/05": "Revolución de Mayo",
-            "17/06": "Güemes",
-            "20/06": "Bandera",
-            "09/07": "Independencia",
-            "17/08": "San Martín",
-            "12/10": "Diversidad Cultural",
-            "20/11": "Soberanía Nacional",
-            "08/12": "Inmaculada Concepción",
-            "25/12": "Navidad"
+            "01/01": "Año Nuevo", "16/02": "Carnaval", "17/02": "Carnaval", "24/03": "Memoria",
+            "02/04": "Malvinas", "01/05": "Trabajador", "25/05": "Revolución de Mayo",
+            "17/06": "Güemes", "20/06": "Bandera", "09/07": "Independencia", "17/08": "San Martín",
+            "12/10": "Diversidad Cultural", "20/11": "Soberanía Nacional", "08/12": "Inmaculada Concepción", "25/12": "Navidad"
         }
 
-        # Opciones permitidas para el selector
         opciones_letras = ['F', 'FER', 'V', 'RH', 'E', 'AI', 'EX', 'L', 'ART', 'C', 'B']
 
-        cols_fechas_finales = [c for c in df_logueos.columns if c not in ['Asesor', 'Tipo']]
-
-        import re
-
-        for col in cols_fechas_finales:
+        for col in [c for c in df_logueos.columns if c not in ['Asesor', 'Tipo']]:
             texto_col = str(col).strip()
             es_feriado_col = False
-            
-            # Buscar cualquier patrón de dos números seguidos de '/' o '-' (ej: "12/10", "12/10/2026", "2026-10-12")
             match = re.search(r'(\d{1,2})[/.-](\d{1,2})', texto_col)
-            
             if match:
-                part1 = match.group(1).zfill(2)
-                part2 = match.group(2).zfill(2)
-                
-                # Probar si viene como DD/MM o MM/DD (o YYYY-MM-DD)
-                clave_ddmm_1 = f"{part1}/{part2}" # 12/10
-                clave_ddmm_2 = f"{part2}/{part1}" # 10/12 (en caso de YYYY-MM-DD -> 10/12 seria mes/dia)
-                
-                if clave_ddmm_1 in FERIADOS_DDMM or clave_ddmm_2 in FERIADOS_DDMM:
+                p1, p2 = match.group(1).zfill(2), match.group(2).zfill(2)
+                if f"{p1}/{p2}" in FERIADOS_DDMM or f"{p2}/{p1}" in FERIADOS_DDMM:
                     es_feriado_col = True
 
             def procesar_celda(valor, es_fer=es_feriado_col):
                 val_str = str(valor).strip().upper() if valor is not None and str(valor).strip() != 'nan' else ''
-                
-                # Preservar fila separadora entre asesores
                 if val_str == '':
                     return ''
-
-                # Mantener horarios de fichada
                 if ':' in val_str:
                     return val_str
 
-                # Si es un valor nulo o sin horario, determinar si es FER o F
-                if val_str in ['---', 'NONE', 'NAN', 'F', 'FER']:
-                    val_actual = 'FER' if es_fer else 'F'
-                else:
-                    val_actual = val_str
-
-                # Generar el HTML del selector
-                opts_html = [
-                    f'<option value="{opt}" {"selected" if opt == val_actual else ""}>{opt}</option>'
-                    for opt in opciones_letras
-                ]
-                
+                val_actual = 'FER' if es_fer else 'F' if val_str in ['---', 'NONE', 'NAN', 'F', 'FER'] else val_str
+                opts_html = [f'<option value="{opt}" {"selected" if opt == val_actual else ""}>{opt}</option>' for opt in opciones_letras]
                 return f'<select class="select-estado-logueo estado-{val_actual}" onchange="cambiarColorEstado(this)">{"".join(opts_html)}</select>'
 
-            # Aplicar la transformación celda por celda
             df_logueos[col] = df_logueos[col].apply(lambda x, f=es_feriado_col: procesar_celda(x, f))
 
-        # Generar HTML final
-        html_tabla = df_logueos.fillna('').to_html(
-            classes='table table-bordered table-striped tabla-logueos',
-            index=False,
-            escape=False
-        )
+        html_tabla = df_logueos.fillna('').to_html(classes='table table-bordered table-striped tabla-logueos', index=False, escape=False)
 
         return jsonify({
             "success": True,
@@ -1085,28 +786,23 @@ def upload_logueo():
         })      
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            "success": False,
-            "message": f"Error al procesar: {type(e).__name__} - {str(e)}"
-        }), 500
+        return jsonify({"success": False, "message": f"Error: {type(e).__name__} - {str(e)}"}), 500
+
 
 @app.route('/limpiar_logueos', methods=['POST'])
 def limpiar_logueos():
-    # Limpiar las claves acumuladas en la sesión
+    """Limpia los logueos acumulados en la sesión actual"""
     session.pop('logueos_acumulados', None)
-    session.pop('logueos_master_cols', None)
+    session.pop('logueos_master_cols', None).
     session.modified = True
-    
-    return jsonify({
-        "success": True,
-        "message": "Se han eliminado todos los reportes acumulados correctamente."
-    })
+    return jsonify({"success": True, "message": "Se han eliminado todos los reportes acumulados."})
 
-    import datetime
 
+# ==========================================
+# 8. ARRANQUE DEL SERVIDOR FLASK
+# ==========================================
 
 if __name__ == '__main__':
-    print("\n🚀 Servidor activo en http://127.0.0.1:5000\n")
-    app.run(debug=True, host='127.0.0.1', port=5000, use_reloader=False)
+    port = int(os.getenv('PORT', 5000))
+    print(f"\n🚀 Servidor activo en http://127.0.0.1:{port}\n")
+    app.run(debug=True, host='127.0.0.1', port=port, use_reloader=False)

@@ -1,6 +1,24 @@
+# Entorno y Secretos
 .env
-__pycache__/
-*.pyc
+.env.*
+!.env.example
+
+# Archivos de subida y temporales
 uploads/
-*.xlsx.env
-.DS_Storetxt/
+*.xlsx
+*.xls
+*.csv
+
+# Python y Entornos Virtuales
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# IDEs y SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

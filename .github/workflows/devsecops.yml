@@ -1,0 +1,78 @@
+name: Pipeline DevSecOps - Naturgy BAN
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # -------------------------------------------------------------
+  # JOB 1: Detección de Fugas de Secretos con Gitleaks (TP03 / TP17)
+  # -------------------------------------------------------------
+  secret-scan:
+    name: Escaneo de Secretos (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ejecutar Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # -------------------------------------------------------------
+  # JOB 2: Análisis Estático de Código SAST con Semgrep (TP15)
+  # -------------------------------------------------------------
+  sast-scan:
+    name: Análisis SAST (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Ejecutar Semgrep
+        run: |
+          python3 -m pip install semgrep
+          semgrep scan --config=auto .
+
+  # -------------------------------------------------------------
+  # JOB 3: Escaneo de Vulnerabilidades y Dockerfile con Trivy (TP18)
+  # -------------------------------------------------------------
+  vulnerability-scan:
+    name: Escaneo SCA y Dockerfile (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Escanear código fuente y dependencias
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+
+  # -------------------------------------------------------------
+  # JOB 4: Compilación y Verificación de Docker (TP05 / TP06)
+  # -------------------------------------------------------------
+  docker-build:
+    name: Compilación del Contenedor
+    needs: [secret-scan, sast-scan, vulnerability-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Probar compilación del Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
