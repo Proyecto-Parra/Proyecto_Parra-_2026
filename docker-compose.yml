@@ -1,21 +1,42 @@
 version: '3.8'
 
 services:
-  # Servicio Backend Flask (Gunicorn)
+  # Base de Datos PostgreSQL (Usuarios y Nóminas)
+  db:
+    image: postgres:15-alpine
+    container_name: naturgy_postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: naturgy_db
+      POSTGRES_USER: devsecops_user
+      POSTGRES_PASSWORD: devsecops_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - app-network
+
+  # Backend Flask
   web:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: naturgy_flask_web
     restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://devsecops_user:devsecops_password_2026@db:5432/naturgy_db
     env_file:
       - .env
+    depends_on:
+      - db
     volumes:
       - uploads_data:/app/uploads
     networks:
       - app-network
 
-  # Servicio Frontend Proxy (Nginx)
+  # Proxy Nginx
   proxy:
     image: nginx:alpine
     container_name: naturgy_nginx_proxy
@@ -29,7 +50,7 @@ services:
     networks:
       - app-network
 
-  # Servicio de Monitoreo (Prometheus)
+  # Prometheus (Recolección de Métricas)
   prometheus:
     image: prom/prometheus:latest
     container_name: naturgy_prometheus
@@ -41,10 +62,26 @@ services:
     networks:
       - app-network
 
+  # Grafana (Visualización de Métricas)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: naturgy_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin_grafana_2026
+    depends_on:
+      - prometheus
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
 
 volumes:
   uploads_data:
+    driver: local
+  postgres_data:
     driver: local

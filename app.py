@@ -1,17 +1,50 @@
 import os
 import re
 import json
-import pandas as pd
+import time
+import pandas as
 from collections import OrderedDict
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, session
 from werkzeug.utils import secure_filename
-
-# Importar librerías de métricas de Prometheus
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
-import time
 
-# DEFINICIÓN DE MÉTRICAS OPERACIONALES (TP08 / TP12C)
+# ==========================================
+# 1. CONFIGURACIÓN INICIAL Y ENTORNO
+# ==========================================
+
+# Cargar variables del archivo .env
+load_dotenv()
+
+# Instanciar la aplicación Flask
+app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'clave_desarrollo_local_2026')
+
+# Carpeta de destino para archivos subidos
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+#POSTGRESSSQL
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+# Configuración de conexión a PostgreSQL (TP10)
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://devsecops_user:devsecops_password_2026@localhost:5432/naturgy_db')
+
+def get_db_connection():
+    """Establece conexión con la base de datos PostgreSQL"""
+    try:
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        return conn
+    except Exception as e:
+        print(f"⚠️ Error conectando a PostgreSQL: {e}")
+        return None
+
+# ==========================================
+# 2. MÉTRICAS DE OBSERVABILIDAD (PROMETHEUS)
+# ==========================================
+
 REQUEST_COUNT = Counter(
     'flask_http_request_total', 
     'Total de peticiones HTTP en la aplicacion', 
@@ -26,11 +59,10 @@ REQUEST_LATENCY = Histogram(
 
 FILE_UPLOAD_COUNT = Counter(
     'flask_file_uploads_total', 
-    'Total de archivos de logueo/calidad subidos', 
+    'Total de archivos subidos', 
     ['status']
 )
 
-# Middleware para medir tiempo y contar peticiones
 @app.before_request
 def start_timer():
     request._start_time = time.time()
@@ -48,81 +80,42 @@ def record_metrics(response):
         ).inc()
     return response
 
-# ENDPOINT DEDICADO PARA PROMETHEUS (/metrics)
-@app.route('/metrics', methods=['GET'])
-def metrics():
-    """Expone las metricas de la aplicacion en formato Prometheus"""
-    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
+# ==========================================
+# 3. CARGA DE NÓMINAS Y USUARIOS DESDE .ENV
+# ==========================================
+
+@app.route('/get_nomina/<equipo>', methods=['GET'])
+def get_nomina(equipo):
+    """Devuelve la nómina del equipo desde PostgreSQL"""
+    equipo_upper = equipo.upper()
+    conn = get_db_connection()
+    nomina_data = {}
+
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT legajo, nombre, lider, turno FROM nominas WHERE UPPER(equipo) LIKE %s;",
+                    (f"%{equipo_upper}%",)
+                )
+                filas = cur.fetchall()
+                for f in filas:
+                    nomina_data[f['legajo']] = {
+                        "nombre": f['nombre'],
+                        "lider": f['lider'],
+                        "turno": f['turno']
+                    }
+            conn.close()
+        except Exception as e:
+            print(f"Error consultando nómina en DB: {e}")
+
+    if nomina_data:
+        return jsonify({"success": True, "data": nomina_data})
     
-# ==========================================
-# 1. CONFIGURACIÓN INICIAL Y ENTORNO
-# ==========================================
-
-# Carga obligatoria de variables del archivo .env antes de acceder a ellas
-load_dotenv()
-
-app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', 'clave_desarrollo_local_2026')
-
-# Carpeta de destino para archivos subidos
-UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
+    return jsonify({"success": False, "message": f"Nómina no encontrada para {equipo}"})
 
 # ==========================================
-# 2. CARGA DE NÓMINAS Y USUARIOS DESDE .ENV
-# ==========================================
-
-def cargar_nomina_env(var_name):
-    """Auxiliar para parsear JSONs de nóminas definidos en el .env"""
-    try:
-        raw = os.getenv(var_name, '{}')
-        return json.loads(raw)
-    except Exception as e:
-        print(f"⚠️ Error al parsear {var_name} del .env: {e}")
-        return {}
-
-# Carga de Nóminas oficiales por equipo
-NOMINA_BAN = cargar_nomina_env('NOMINA_BAN')
-NOMINA_SAN_JUAN = cargar_nomina_env('NOMINA_SAN_JUAN')
-NOMINA_NOA = cargar_nomina_env('NOMINA_NOA')
-
-# Mapeo invertido para búsquedas por Nombre -> Legajo en Equipo BAN
-NOMINA_POR_NOMBRE_BAN = {str(v).strip().upper(): str(k).strip() for k, v in NOMINA_BAN.items()}
-
-# Base de datos de usuarios (Líderes y Asesores con contraseñas desde .env)
-USUARIOS = {
-    # --- LÍDERES (Gestión total de archivos y equipos) ---
-    "kparra": {
-        "password": os.getenv('PASS_KPARRA', 'admin2026'),
-        "rol": "lider",
-        "equipo": "TODOS"
-    },
-    "lherrera": {
-        "password": os.getenv('PASS_LHERRERA', 'admin2026'),
-        "rol": "lider",
-        "equipo": "TODOS"
-    },
-
-    # --- ASESORES (Lectura de reportes) ---
-    "mquintana": {"password": os.getenv('PASS_MQUINTANA'), "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "aescobar":  {"password": os.getenv('PASS_AESCOBAR'),  "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "lganino":   {"password": os.getenv('PASS_LGANINO'),   "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "aherbas":   {"password": os.getenv('PASS_AHERBAS'),   "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "frios":     {"password": os.getenv('PASS_FRIOS'),     "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "carce":     {"password": os.getenv('PASS_CARCE'),     "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "arios":     {"password": os.getenv('PASS_ARIOS'),     "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "fruiz":     {"password": os.getenv('PASS_FRUIZ'),     "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "vgarcia":   {"password": os.getenv('PASS_VGARCIA'),   "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "nbogado":   {"password": os.getenv('PASS_NBOGADO'),   "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "vgonzalez": {"password": os.getenv('PASS_VGONZALEZ'), "rol": "asesor", "equipo": "NATURGY BAN CAU"},
-    "sgonzalez": {"password": os.getenv('PASS_SGONZALEZ'), "rol": "asesor", "equipo": "NATURGY BAN CAU"}
-}
-
-
-# ==========================================
-# 3. FUNCIONES AUXILIARES DE PROCESAMIENTO
+# 4. FUNCIONES AUXILIARES DE PROCESAMIENTO
 # ==========================================
 
 def clean_str(val):
@@ -282,46 +275,63 @@ def procesar_archivo_reporte(filepath):
 
 
 # ==========================================
-# 4. RUTAS PRINCIPALES Y AUTENTICACIÓN
+# 5. RUTAS PRINCIPALES Y AUTENTICACIÓN
 # ==========================================
+
+@app.route('/metrics', methods=['GET'])
+def metrics():
+    """Expone métricas en formato compatible con Prometheus"""
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
+
 
 @app.route('/')
 def index():
     """Renderea la vista web principal"""
     return render_template('index.html')
 
-
 @app.route('/login', methods=['POST'])
 def login():
-    """Valida usuarios, roles y asignación de equipo"""
+    """Valida usuarios, roles y asignación de equipo desde PostgreSQL"""
     data = request.get_json() or {}
-    usuario = data.get('usuario', '').strip().lower()
-    password = data.get('password', '').strip()
+    usuario_input = data.get('usuario', '').strip().lower()
+    password_input = data.get('password', '').strip()
     equipo_solicitado = data.get('equipo', '').strip()
 
-    if usuario not in USUARIOS or USUARIOS[usuario]['password'] != password:
-        return jsonify({"success": False, "message": "Usuario o contraseña incorrectos"}), 401
+    conn = get_db_connection()
+    user_info = None
 
-    user_info = USUARIOS[usuario]
+    if conn:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT usuario, password, rol, equipo, nombre_completo FROM usuarios WHERE LOWER(usuario) = %s;",
+                    (usuario_input,)
+                )
+                user_info = cur.fetchone()
+            conn.close()
+        except Exception as e:
+            print(f"Error consultando usuario en DB: {e}")
 
-    # Restricción de equipo para asesores
-    if user_info['rol'] != 'lider' and user_info['equipo'] != "TODOS" and user_info['equipo'] != equipo_solicitado:
+    # Si la DB responde y la contraseña coincide
+    if user_info and user_info['password'] == password_input:
+        if user_info['rol'] != 'lider' and user_info['equipo'] != "TODOS" and user_info['equipo'] != equipo_solicitado:
+            return jsonify({
+                "success": False, 
+                "message": f"Acceso denegado: El usuario '{usuario_input}' pertenece al equipo '{user_info['equipo']}'."
+            }), 403
+
+        session['usuario'] = user_info['usuario']
+        session['rol'] = user_info['rol']
+        session['equipo'] = equipo_solicitado if user_info['rol'] == 'lider' else user_info['equipo']
+
         return jsonify({
-            "success": False, 
-            "message": f"Acceso denegado: El usuario '{usuario}' pertenece al equipo '{user_info['equipo']}'."
-        }), 403
+            "success": True,
+            "usuario": user_info['usuario'],
+            "rol": user_info['rol'],
+            "equipo": session['equipo']
+        })
 
-    session['usuario'] = usuario
-    session['rol'] = user_info['rol']
-    session['equipo'] = equipo_solicitado if user_info['rol'] == 'lider' else user_info['equipo']
-
-    return jsonify({
-        "success": True,
-        "usuario": usuario,
-        "rol": user_info['rol'],
-        "equipo": session['equipo']
-    })
-
+    return jsonify({"success": False, "message": "Usuario o contraseña incorrectos"}), 401
 
 @app.route('/logout', methods=['POST'])
 def logout():
@@ -351,7 +361,7 @@ def get_nomina(equipo):
 
 
 # ==========================================
-# 5. CARGA Y CONSOLIDACIÓN DE REPORTES
+# 6. CARGA Y CONSOLIDACIÓN DE REPORTES
 # ==========================================
 
 @app.route('/upload', methods=['POST'])
@@ -375,6 +385,7 @@ def upload_file():
 
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(filepath)
+    FILE_UPLOAD_COUNT.labels(status='success').inc()
 
     return jsonify({
         "success": True,
@@ -444,7 +455,7 @@ def obtener_reporte():
 
 
 # ==========================================
-# 6. GESTIÓN DE CALIDAD Y MONITOREOS (RAC)
+# 7. GESTIÓN DE CALIDAD Y MONITOREOS (RAC)
 # ==========================================
 
 @app.route('/upload_calidad_resumen', methods=['POST'])
@@ -488,7 +499,6 @@ def upload_calidad_resumen():
         if df_raw is None or df_raw.empty:
             return jsonify({"success": False, "message": "No se encontraron datos válidos en la hoja seleccionada."}), 400
 
-        # Localizar la fila de encabezados
         header_idx = None
         for r_idx in range(len(df_raw)):
             row_str = ' '.join([clean_str(x).upper() for x in df_raw.iloc[r_idx].values if pd.notna(x)])
@@ -642,7 +652,7 @@ def upload_calidad_resumen():
 
 
 # ==========================================
-# 7. REGISTRO Y MATRIZ DE LOGUEO
+# 8. REGISTRO Y MATRIZ DE LOGUEO
 # ==========================================
 
 @app.route('/upload_logueo', methods=['POST'])
@@ -665,7 +675,6 @@ def upload_logueo():
         asesor_nombre = request.form.get('asesor_nombre', '').strip()
         df_raw = None
 
-        # Estrategias de lectura
         if ext in ['.xlsx', '.xlsm']:
             try:
                 import openpyxl
@@ -699,7 +708,6 @@ def upload_logueo():
 
         df_raw = df_raw.ffill(axis=1)
 
-        # Extracción del nombre del agente
         if not asesor_nombre:
             for r in range(min(20, len(df_raw))):
                 for c in range(min(20, df_raw.shape[1])):
@@ -715,7 +723,6 @@ def upload_logueo():
         if not asesor_nombre:
             asesor_nombre = os.path.splitext(original_filename)[0].replace('logueo_', '').replace('_', ' ').strip().upper()
 
-        # Filas de entrada y salida
         idx_entrada = next((r for r in range(len(df_raw)) if 'ENTRADA' in ' '.join([clean_str(x).upper() for x in df_raw.iloc[r].values])), None)
         idx_salida = next((r for r in range(len(df_raw)) if 'SALIDA' in ' '.join([clean_str(x).upper() for x in df_raw.iloc[r].values])), None)
 
@@ -840,13 +847,13 @@ def upload_logueo():
 def limpiar_logueos():
     """Limpia los logueos acumulados en la sesión actual"""
     session.pop('logueos_acumulados', None)
-    session.pop('logueos_master_cols', None).
+    session.pop('logueos_master_cols', None)
     session.modified = True
     return jsonify({"success": True, "message": "Se han eliminado todos los reportes acumulados."})
 
 
 # ==========================================
-# 8. ARRANQUE DEL SERVIDOR FLASK
+# 9. ARRANQUE DEL SERVIDOR FLASK
 # ==========================================
 
 if __name__ == '__main__':
