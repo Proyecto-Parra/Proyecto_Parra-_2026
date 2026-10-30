@@ -2,7 +2,7 @@ import os
 import re
 import json
 import time
-import pandas as
+import pandas as pd
 from collections import OrderedDict
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, session
@@ -33,12 +33,25 @@ from psycopg2.extras import RealDictCursor
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://devsecops_user:devsecops_password_2026@localhost:5432/naturgy_db')
 
 def get_db_connection():
-    """Establece conexión con la base de datos PostgreSQL"""
     try:
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        
+        # Detecta si debe usar 'db' (Docker) o 'localhost' (ejecución directa)
+        db_host = os.getenv('DB_HOST', 'localhost' if os.getenv('FLASK_ENV') == 'development' else 'db')
+        
+        conn = psycopg2.connect(
+            host=db_host,
+            port=os.getenv('DB_PORT', '5432'),
+            dbname=os.getenv('POSTGRES_DB', 'naturgy_db'),
+            user=os.getenv('POSTGRES_USER', 'postgres'),
+            password=os.getenv('POSTGRES_PASSWORD', 'admin2026'),
+            cursor_factory=RealDictCursor,
+            connect_timeout=3
+        )
         return conn
     except Exception as e:
-        print(f"⚠️ Error conectando a PostgreSQL: {e}")
+        print(f"⚠️ Error conectando a PostgreSQL ({os.getenv('DB_HOST', 'localhost')}): {e}")
         return None
 
 # ==========================================
@@ -81,16 +94,60 @@ def record_metrics(response):
     return response
 
 # ==========================================
-# 3. CARGA DE NÓMINAS Y USUARIOS DESDE .ENV
+# 3. USUARIOS DESDE VARIABLES DE ENTORNO (.ENV)
 # ==========================================
+USUARIOS = {
+    # --- LÍDERES ---
+    "kparra": {
+        "password": os.getenv('PASS_KPARRA') or os.getenv('PASS_LIDER_1'),
+        "rol": "lider",
+        "equipo": "TODOS"
+    },
+    "lherrera": {
+        "password": os.getenv('PASS_LHERRERA') or os.getenv('PASS_LIDER_2'),
+        "rol": "lider",
+        "equipo": "TODOS"
+    },
+
+    # --- ASESORES ---
+    "mquintana": {"password": os.getenv('PASS_MQUINTANA'), "rol": "asesor", "equipo": "RAC"},
+    "aescobar":  {"password": os.getenv('PASS_AESCOBAR'),  "rol": "asesor", "equipo": "RAC"},
+    "lganino":   {"password": os.getenv('PASS_LGANINO'),   "rol": "asesor", "equipo": "RAC"},
+    "aherbas":   {"password": os.getenv('PASS_AHERBAS'),   "rol": "asesor", "equipo": "RAC"},
+    "frios":     {"password": os.getenv('PASS_FRIOS'),     "rol": "asesor", "equipo": "RAC"},
+    "carce":     {"password": os.getenv('PASS_CARCE'),     "rol": "asesor", "equipo": "RAC"},
+    "arios":     {"password": os.getenv('PASS_ARIOS'),     "rol": "asesor", "equipo": "RAC"},
+    "fruiz":     {"password": os.getenv('PASS_FRUIZ'),     "rol": "asesor", "equipo": "RAC"},
+    "vgarcia":   {"password": os.getenv('PASS_VGARCIA'),   "rol": "asesor", "equipo": "RAC"},
+    "nbogado":   {"password": os.getenv('PASS_NBOGADO'),   "rol": "asesor", "equipo": "RAC"},
+    "vgonzalez": {"password": os.getenv('PASS_VGONZALEZ'), "rol": "asesor", "equipo": "RAC"},
+    "sgonzalez": {"password": os.getenv('PASS_SGONZALEZ'), "rol": "asesor", "equipo": "RAC"},
+}
+
+# ==========================================
+# 4. CARGA Y LECTURA DE NÓMINAS DESDE .ENV
+# ==========================================
+
+def cargar_nomina_env(var_name):
+    try:
+        raw = os.getenv(var_name, '{}').strip().strip("'\"")
+        return json.loads(raw)
+    except Exception as e:
+        print(f"⚠️ Error al parsear {var_name} del .env: {e}")
+        return {}
+
+NOMINA_BAN = cargar_nomina_env('NOMINA_BAN')
+NOMINA_SAN_JUAN = cargar_nomina_env('NOMINA_SAN_JUAN')
+NOMINA_NOA = cargar_nomina_env('NOMINA_NOA')
 
 @app.route('/get_nomina/<equipo>', methods=['GET'])
 def get_nomina(equipo):
-    """Devuelve la nómina del equipo desde PostgreSQL"""
+    """Devuelve la nómina del equipo incluyendo legajo, nombre, líder y turno"""
     equipo_upper = equipo.upper()
-    conn = get_db_connection()
-    nomina_data = {}
+    nomina_lista = []
 
+    # 1. Intentar consulta a PostgreSQL (en Docker)
+    conn = get_db_connection()
     if conn:
         try:
             with conn.cursor() as cur:
@@ -100,22 +157,43 @@ def get_nomina(equipo):
                 )
                 filas = cur.fetchall()
                 for f in filas:
-                    nomina_data[f['legajo']] = {
-                        "nombre": f['nombre'],
-                        "lider": f['lider'],
-                        "turno": f['turno']
-                    }
+                    nomina_lista.append({
+                        "legajo": str(f.get('legajo', '---')),
+                        "nombre": f.get('nombre', '---'),
+                        "lider": f.get('lider', '---'),
+                        "turno": f.get('turno', '---')
+                    })
             conn.close()
         except Exception as e:
-            print(f"Error consultando nómina en DB: {e}")
+            print(f"⚠️ Error consultando BD de nómina: {e}")
 
-    if nomina_data:
-        return jsonify({"success": True, "data": nomina_data})
-    
+    # 2. Respaldo desde el .env (local sin Docker)
+    if not nomina_lista:
+        if "BAN" in equipo_upper:
+            dict_env = NOMINA_BAN
+        elif "SAN JUAN" in equipo_upper:
+            dict_env = NOMINA_SAN_JUAN
+        elif "NOA" in equipo_upper:
+            dict_env = NOMINA_NOA
+        else:
+            dict_env = {}
+
+        for legajo_key, info in dict_env.items():
+            if isinstance(info, dict):
+                nomina_lista.append({
+                    "legajo": str(legajo_key),
+                    "nombre": info.get("nombre", "---"),
+                    "lider": info.get("lider", "---"),
+                    "turno": info.get("turno", "---")
+                })
+
+    if nomina_lista:
+        return jsonify({"success": True, "data": nomina_lista})
+
     return jsonify({"success": False, "message": f"Nómina no encontrada para {equipo}"})
 
 # ==========================================
-# 4. FUNCIONES AUXILIARES DE PROCESAMIENTO
+# 5. FUNCIONES AUXILIARES DE PROCESAMIENTO
 # ==========================================
 
 def clean_str(val):
@@ -275,7 +353,7 @@ def procesar_archivo_reporte(filepath):
 
 
 # ==========================================
-# 5. RUTAS PRINCIPALES Y AUTENTICACIÓN
+# 6. RUTAS PRINCIPALES Y AUTENTICACIÓN
 # ==========================================
 
 @app.route('/metrics', methods=['GET'])
@@ -291,47 +369,63 @@ def index():
 
 @app.route('/login', methods=['POST'])
 def login():
-    """Valida usuarios, roles y asignación de equipo desde PostgreSQL"""
+    """Valida usuarios consultando PostgreSQL o el fallback de .env"""
     data = request.get_json() or {}
     usuario_input = data.get('usuario', '').strip().lower()
     password_input = data.get('password', '').strip()
     equipo_solicitado = data.get('equipo', '').strip()
 
+    # 1. INTENTAR VALIDAR CONTRA POSTGRESQL
     conn = get_db_connection()
-    user_info = None
-
     if conn:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT usuario, password, rol, equipo, nombre_completo FROM usuarios WHERE LOWER(usuario) = %s;",
+                    "SELECT usuario, password, rol, equipo FROM usuarios WHERE LOWER(usuario) = %s;",
                     (usuario_input,)
                 )
-                user_info = cur.fetchone()
+                user_db = cur.fetchone()
             conn.close()
+
+            if user_db and user_db['password'] == password_input:
+                if user_db['rol'] != 'lider' and user_db['equipo'] != "TODOS" and user_db['equipo'] != equipo_solicitado:
+                    return jsonify({
+                        "success": False, 
+                        "message": f"Acceso denegado: El usuario pertenece al equipo '{user_db['equipo']}'."
+                    }), 403
+
+                session['usuario'] = user_db['usuario']
+                session['rol'] = user_db['rol']
+                session['equipo'] = equipo_solicitado if user_db['rol'] == 'lider' else user_db['equipo']
+
+                return jsonify({
+                    "success": True,
+                    "usuario": user_db['usuario'],
+                    "rol": user_db['rol'],
+                    "equipo": session['equipo']
+                })
         except Exception as e:
-            print(f"Error consultando usuario en DB: {e}")
+            print(f"⚠️ Fallo consulta DB, usando fallback local: {e}")
 
-    # Si la DB responde y la contraseña coincide
-    if user_info and user_info['password'] == password_input:
-        if user_info['rol'] != 'lider' and user_info['equipo'] != "TODOS" and user_info['equipo'] != equipo_solicitado:
+    # 2. FALLBACK A USUARIOS LOCALES (.ENV)
+    pass_kparra = os.getenv('PASS_KPARRA', 'admin2026')
+    pass_lherrera = os.getenv('PASS_LHERRERA', 'admin2026')
+
+    if usuario_input in ['kparra', 'lherrera']:
+        pass_valida = pass_kparra if usuario_input == 'kparra' else pass_lherrera
+        if password_input == pass_valida:
+            session['usuario'] = usuario_input
+            session['rol'] = 'lider'
+            session['equipo'] = equipo_solicitado
             return jsonify({
-                "success": False, 
-                "message": f"Acceso denegado: El usuario '{usuario_input}' pertenece al equipo '{user_info['equipo']}'."
-            }), 403
-
-        session['usuario'] = user_info['usuario']
-        session['rol'] = user_info['rol']
-        session['equipo'] = equipo_solicitado if user_info['rol'] == 'lider' else user_info['equipo']
-
-        return jsonify({
-            "success": True,
-            "usuario": user_info['usuario'],
-            "rol": user_info['rol'],
-            "equipo": session['equipo']
-        })
+                "success": True,
+                "usuario": usuario_input,
+                "rol": "lider",
+                "equipo": equipo_solicitado
+            })
 
     return jsonify({"success": False, "message": "Usuario o contraseña incorrectos"}), 401
+
 
 @app.route('/logout', methods=['POST'])
 def logout():
@@ -339,34 +433,13 @@ def logout():
     session.clear()
     return jsonify({"success": True})
 
-
-@app.route('/get_nomina/<equipo>', methods=['GET'])
-def get_nomina(equipo):
-    """Devuelve la nómina correspondiente al equipo seleccionado"""
-    equipo_upper = equipo.upper()
-
-    if "BAN" in equipo_upper:
-        nomina_data = NOMINA_BAN
-    elif "SAN JUAN" in equipo_upper:
-        nomina_data = NOMINA_SAN_JUAN
-    elif "NOA" in equipo_upper:
-        nomina_data = NOMINA_NOA
-    else:
-        nomina_data = {}
-
-    if nomina_data:
-        return jsonify({"success": True, "data": nomina_data})
-    
-    return jsonify({"success": False, "message": "Nómina no encontrada para este equipo"})
-
-
 # ==========================================
-# 6. CARGA Y CONSOLIDACIÓN DE REPORTES
+# 7. CARGA Y CONSOLIDACIÓN DE REPORTES
 # ==========================================
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    """Permite al Líder subir planillas de reportes (.csv, .xlsx, .xls)"""
+    """Permite al Líder subir planillas de repocfrtes (.csv, .xlsx, .xls)"""
     if session.get('rol') != 'lider':
         return jsonify({"success": False, "message": "Se requieren permisos de Líder."}), 403
 
@@ -391,7 +464,6 @@ def upload_file():
         "success": True,
         "message": f"Reporte '{filename}' cargado correctamente."
     })
-
 
 @app.route('/obtener_reporte', methods=['GET'])
 def obtener_reporte():
@@ -455,7 +527,7 @@ def obtener_reporte():
 
 
 # ==========================================
-# 7. GESTIÓN DE CALIDAD Y MONITOREOS (RAC)
+# 8. GESTIÓN DE CALIDAD Y MONITOREOS (RAC)
 # ==========================================
 
 @app.route('/upload_calidad_resumen', methods=['POST'])
@@ -652,7 +724,7 @@ def upload_calidad_resumen():
 
 
 # ==========================================
-# 8. REGISTRO Y MATRIZ DE LOGUEO
+# 9. REGISTRO Y MATRIZ DE LOGUEO
 # ==========================================
 
 @app.route('/upload_logueo', methods=['POST'])
@@ -853,7 +925,7 @@ def limpiar_logueos():
 
 
 # ==========================================
-# 9. ARRANQUE DEL SERVIDOR FLASK
+# 10. ARRANQUE DEL SERVIDOR FLASK
 # ==========================================
 
 if __name__ == '__main__':

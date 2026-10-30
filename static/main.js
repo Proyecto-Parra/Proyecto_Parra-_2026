@@ -10,94 +10,54 @@ const CANVA_URLS = {
 // ==========================================
 // 1. GESTIÓN DE NÓMINA DINÁMICA DESDE .ENV
 // ==========================================
-async function cargarNomina(equipo) {
+// Cargar la nómina del equipo seleccionado
+function cargarNomina() {
     const container = document.getElementById("nomina-container");
     if (!container) return;
 
-    // Buscar el equipo activo en pantalla o en la variable global si no viene por parámetro
-    if (!equipo || equipo === "" || equipo === "---") {
-        const teamDisplay = document.getElementById("team-display");
-        equipo = (teamDisplay && teamDisplay.innerText.trim() !== "---") 
-            ? teamDisplay.innerText.trim() 
-            : equipoSeleccionado;
-    }
+    container.innerHTML = "<p>Cargando nómina de personal...</p>";
 
-    if (!equipo || equipo === "" || equipo === "---") {
-        container.innerHTML = `
-            <div class="placeholder-box">
-                <p>Por favor, selecciona un equipo en el inicio para consultar su nómina.</p>
-            </div>`;
-        return;
-    }
-
-    try {
-        const response = await fetch(`/get_nomina/${encodeURIComponent(equipo)}`);
-        const result = await response.json();
-
-        if (result.success && result.data && Object.keys(result.data).length > 0) {
-            const nomina = result.data;
-            let filasHtml = '';
-
-            // 🎯 BUCLE ACTUALIZADO CON SOPORTE PARA LÍDER Y TURNO:
-            for (const [legajo, item] of Object.entries(nomina)) {
-                const esObjeto = typeof item === 'object' && item !== null;
-                const nombreCompleto = esObjeto ? item.nombre : item;
-                const lider = esObjeto ? item.lider : '---';
-                const turno = esObjeto ? (item.turno || 'TM') : 'TM';
-
-                const partes = nombreCompleto.split(' ');
-                const apellido = partes[0] || '';
-                const nombre = partes.slice(1).join(' ') || '';
-
-                const claseBadge = turno.toUpperCase() === 'TT' ? 'badge-turno tt' : 'badge-turno tm';
-
-                filasHtml += `
-                    <tr>
-                        <td>${legajo}</td>
-                        <td>${apellido}</td>
-                        <td>${nombre}</td>
-                        <td>${lider}</td>
-                        <td><span class="${claseBadge}">${turno}</span></td>
-                    </tr>`;
-            }
-
-            container.innerHTML = `
-                <div class="nomina-header">
-                    <img src="/static/naturgy.png" alt="Logo Naturgy" class="logo-naturgy" onerror="this.style.display='none'">
-                    <h2>Nómina Oficial - ${equipo}</h2>
-                </div>
-
-                <div class="nomina-grid">
-                    <div class="nomina-card">
-                        <div class="supervisor-title">
-                            <svg class="tab-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                            Integrantes del Equipo
-                        </div>
-                        <table class="tabla-nomina">
-                            <thead>
-                                <tr>
-                                    <th>Legajo</th>
-                                    <th>Apellido</th>
-                                    <th>Nombre</th>
-                                    <th>Líder a Cargo</th>
-                                    <th>Turno</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${filasHtml}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>`;
+    fetch("/get_nomina/" + encodeURIComponent(equipoSeleccionado))
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data && data.data.length > 0) {
+            renderizarTablaNomina(container, data.data);
         } else {
-            container.innerHTML = `
-                <div class="placeholder-box">
-                    <p>Nómina de personal para <strong>${equipo}</strong> en proceso de carga.</p>
-                </div>`;
+            container.innerHTML = "<p class='text-muted'>No se encontraron registros de nómina para este equipo.</p>";
         }
-    } catch (error) {
-        console.error("Error al cargar nómina:", error);
-    }
+    })
+    .catch(err => {
+        console.error("Error al obtener la nómina desde el servidor:", err);
+        container.innerHTML = "<p class='text-danger'>Error de comunicación al consultar la nómina con el servidor.</p>";
+    });
+}
+
+// Función auxiliar exclusiva para dibujar la tabla HTML con los datos recibidos
+function renderizarTablaNomina(container, listaData) {
+    let html = `
+        <table class="table table-striped table-bordered align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Legajo</th>
+                    <th>Nombre y Apellido</th>
+                    <th>Líder Asignado</th>
+                    <th>Turno</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    listaData.forEach(item => {
+        html += `
+            <tr>
+                <td><strong>${item.legajo || '---'}</strong></td>
+                <td>${item.nombre || '---'}</td>
+                <td>${item.lider || '---'}</td>
+                <td><span class="badge bg-primary">${item.turno || '---'}</span></td>
+            </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 }
 
 // ==========================================
